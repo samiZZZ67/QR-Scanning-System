@@ -1,0 +1,18 @@
+{
+  "customerMenu": "قائمة العميل",
+  "customerMenuHint": "امسح QR أو اختر الطاولة.",
+  "menu": "القائمة",
+  "cart": "السلة",
+  "emptyCart": "السلة فارغة.",
+  "notesPlaceholder": "طلبات خاصة، مثل بدون فلفل أو صلصة إضافية...",
+  "orderPlaced": "تم إرسال الطلب",
+  "placeOrder": "إرسال الطلب",
+  "popular": "شائع",
+  "chefPick": "اختيار الشيف",
+  "min": "دقيقة",
+  "addToCart": "أضف إلى السلة",
+  "yourOrder": "طلبك",
+  "callWaiter": "استدعاء النادل",
+  "requestBill": "طلب الفاتورة",
+  "newOrder": "ابدأ طلبا آخر"
+}

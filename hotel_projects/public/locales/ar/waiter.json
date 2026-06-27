@@ -1,0 +1,12 @@
+{
+  "title": "شاشة النادل",
+  "hint": "الطلبات الجاهزة وتنبيهات الخدمة.",
+  "notifications": "الإشعارات",
+  "noNotifications": "لا توجد إشعارات مفتوحة.",
+  "requestBill": "طلب الفاتورة",
+  "callWaiter": "استدعاء النادل",
+  "resolve": "إنهاء",
+  "readyToDeliver": "جاهز للتوصيل",
+  "noReady": "لا توجد طلبات جاهزة.",
+  "markDelivered": "تحديد كمسلم"
+}

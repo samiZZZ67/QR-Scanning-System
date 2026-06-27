@@ -1,0 +1,138 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #f6f3ee;
+  color: #18181b;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(20, 184, 166, 0.15), transparent 32rem),
+    radial-gradient(circle at top right, rgba(244, 63, 94, 0.12), transparent 28rem),
+    #f6f3ee;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.surface {
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(39, 39, 42, 0.1);
+  box-shadow: 0 18px 55px rgba(39, 39, 42, 0.08);
+}
+
+.staff-shell {
+  background:
+    linear-gradient(135deg, rgba(15, 118, 110, 0.08), transparent 34rem),
+    linear-gradient(225deg, rgba(225, 29, 72, 0.08), transparent 34rem),
+    #f8fafc;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  border-radius: 0.5rem;
+  padding: 0.6rem 0.9rem;
+  font-weight: 700;
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+
+.btn:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.btn-primary {
+  background: #0f766e;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #115e59;
+}
+
+.btn-secondary {
+  background: white;
+  color: #27272a;
+  border: 1px solid #d4d4d8;
+}
+
+.btn-secondary:hover {
+  background: #f4f4f5;
+}
+
+.btn-danger {
+  background: #be123c;
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #9f1239;
+}
+
+.field {
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid #d4d4d8;
+  background: white;
+  padding: 0.65rem 0.75rem;
+  outline: none;
+}
+
+.field:focus {
+  border-color: #0f766e;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+}
+
+.dish-art {
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.85), transparent 24%),
+    linear-gradient(135deg, #0f766e, #f43f5e 52%, #f59e0b);
+}
+
+.hero-shell,
+.menu-banner {
+  background-size: cover;
+  background-position: center;
+  transition: transform 220ms ease, box-shadow 220ms ease;
+}
+
+.hero-shell:hover,
+.menu-banner:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 22px 45px rgba(15, 23, 42, 0.12);
+}
+
+.rating-button {
+  transition: transform 140ms ease;
+}
+
+.rating-button:hover {
+  transform: scale(1.08);
+}
+
+.notice {
+  animation: fadeIn 180ms ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}

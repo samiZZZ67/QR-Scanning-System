@@ -1,0 +1,18 @@
+{
+  "customerMenu": "የደንበኛ ምናሌ",
+  "customerMenuHint": "QR ይቃኙ ወይም ጠረጴዛ ይምረጡ።",
+  "menu": "ምግብ ዝርዝር",
+  "cart": "ጋሪ",
+  "emptyCart": "ጋሪዎ ባዶ ነው።",
+  "notesPlaceholder": "ልዩ ጥያቄ፣ ለምሳሌ ቅመም አይኑር ወይም ተጨማሪ ሶስ...",
+  "orderPlaced": "ትዕዛዝ ተልኳል",
+  "placeOrder": "ትዕዛዝ ላክ",
+  "popular": "ተወዳጅ",
+  "chefPick": "የሼፍ ምርጫ",
+  "min": "ደቂቃ",
+  "addToCart": "ወደ ጋሪ ጨምር",
+  "yourOrder": "የእርስዎ ትዕዛዝ",
+  "callWaiter": "አስተናጋጅ ጥራ",
+  "requestBill": "ክፍያ ጠይቅ",
+  "newOrder": "ሌላ ትዕዛዝ ጀምር"
+}
