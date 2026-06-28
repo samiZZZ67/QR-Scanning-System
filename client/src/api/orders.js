@@ -1,3 +1,5 @@
+import { api, apiUrl } from './client.js';
+
 const BASE = "/api";
 
 export async function placeOrder({
@@ -7,13 +9,13 @@ export async function placeOrder({
   notes,
   idempotencyKey,
 }) {
-  const res = await fetch(`${BASE}/orders`, {
+  const res = await fetch(apiUrl(`${BASE}/orders`), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
     },
-    body: JSON.stringify({ tableNumber, floor, items, notes }),
+    body: JSON.stringify({ tableNumber, floor, items, notes, idempotencyKey }),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "Request failed");
@@ -23,7 +25,7 @@ export async function placeOrder({
 }
 
 export async function getOrder(id) {
-  const res = await fetch(`${BASE}/orders/${id}`);
+  const res = await fetch(apiUrl(`${BASE}/orders/${id}`));
   if (!res.ok) {
     const text = await res.text().catch(() => "Not found");
     throw new Error(text || `HTTP ${res.status}`);
@@ -37,23 +39,12 @@ export async function listOrders(params = {}) {
       Object.entries(params).filter(([, v]) => v !== undefined && v !== null),
     ),
   ).toString();
-  const res = await fetch(`${BASE}/orders${qs ? `?${qs}` : ""}`);
-  if (!res.ok) {
-    const text = await res.text().catch(() => "Failed");
-    throw new Error(text || `HTTP ${res.status}`);
-  }
-  return res.json();
+  return api(`${BASE}/orders${qs ? `?${qs}` : ""}`);
 }
 
 export async function updateOrderStatus(id, status) {
-  const res = await fetch(`${BASE}/orders/${id}/status`, {
+  return api(`${BASE}/orders/${id}/status`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status }),
+    body: { status },
   });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "Failed");
-    throw new Error(text || `HTTP ${res.status}`);
-  }
-  return res.json();
 }

@@ -1,19 +1,14 @@
-import { useAuth } from "../contexts/AuthContext.jsx";
+import { Building2, LogOut } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext.jsx';
 
-/**
- * StaffLayout — shell for kitchen / waiter dashboards.
- * Provides the dark top-bar with the hotel name, role badge, and a logout link.
- */
 export default function StaffLayout({ children, title }) {
   const { role, logout } = useAuth();
 
   return (
     <div className="min-h-screen bg-pale flex flex-col">
       <header className="sticky top-0 z-40 bg-rough text-pale-light px-5 py-3 flex items-center justify-between shadow-lifted">
-        <div className="flex items-center gap-3">
-          <span className="text-xl" aria-hidden="true">
-            🏨
-          </span>
+        <div className="fix items-center gap-3">
+          <Building2 size={22} className="text-gold" aria-hidden="true" />
           <div>
             <p className="font-display text-pale-light text-base font-semibold leading-tight">
               Habesha Grand Hotel
@@ -26,9 +21,10 @@ export default function StaffLayout({ children, title }) {
 
         <button
           onClick={logout}
-          className="text-xs text-gold-muted hover:text-pale-light transition-colors underline underline-offset-2"
+          className="inline-flex items-center gap-1.5 text-xs text-gold-muted hover:text-pale-light transition-colors"
           aria-label="Log out"
         >
+          <LogOut size={14} />
           Log out
         </button>
       </header>
@@ -37,3 +33,4 @@ export default function StaffLayout({ children, title }) {
     </div>
   );
 }
+

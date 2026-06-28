@@ -1,19 +1,45 @@
-const STAFF_PIN_KEY = 'hotel_staff_pin';
+const STAFF_TOKEN_KEY = 'hotel_staff_token';
+const STAFF_EXPIRES_KEY = 'hotel_staff_expires_at';
 export const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
 export function apiUrl(path) {
-  return path.startsWith('http') ? path : `${API_BASE}${path}`;
+  if (path.startsWith('http')) return path;
+  const normalized = path.startsWith('/api')
+    ? path
+    : `/api${path.startsWith('/') ? path : `/${path}`}`;
+  return `${API_BASE}${normalized}`;
 }
 
-export function getStaffPin() { return sessionStorage.getItem(STAFF_PIN_KEY) || ''; }
-export function setStaffPin(pin) { sessionStorage.setItem(STAFF_PIN_KEY, pin); }
-export function clearStaffPin() { sessionStorage.removeItem(STAFF_PIN_KEY); }
+export function getStaffToken() {
+  const token = sessionStorage.getItem(STAFF_TOKEN_KEY) || '';
+  const expiresAt = sessionStorage.getItem(STAFF_EXPIRES_KEY) || '';
+  if (expiresAt && Date.now() >= new Date(expiresAt).getTime()) {
+    clearStaffSession();
+    return '';
+  }
+  return token;
+}
+
+export function setStaffSession({ token, expiresAt }) {
+  sessionStorage.setItem(STAFF_TOKEN_KEY, token);
+  sessionStorage.setItem(STAFF_EXPIRES_KEY, expiresAt);
+}
+
+export function clearStaffSession() {
+  sessionStorage.removeItem(STAFF_TOKEN_KEY);
+  sessionStorage.removeItem(STAFF_EXPIRES_KEY);
+}
+
+export function notifyAuthExpired() {
+  clearStaffSession();
+  window.dispatchEvent(new CustomEvent('staff-session-expired'));
+}
 
 export async function api(path, options = {}) {
   const headers = new Headers(options.headers || {});
   if (options.body !== undefined) headers.set('Content-Type', 'application/json');
-  const pin = options.pinOverride ?? getStaffPin();
-  if (pin) headers.set('x-staff-pin', pin);
+  const token = options.tokenOverride ?? getStaffToken();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
 
   const res = await fetch(apiUrl(path), {
     method: options.method || 'GET',
@@ -27,6 +53,9 @@ export async function api(path, options = {}) {
   if (!res.ok) {
     const err = new Error(payload?.error || `Request failed with ${res.status}`);
     err.status = res.status;
+    if (res.status === 401 && options.authOptional !== true) {
+      notifyAuthExpired();
+    }
     throw err;
   }
   return payload;

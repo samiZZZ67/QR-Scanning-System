@@ -1,10 +1,12 @@
+import { api, apiUrl } from './client.js';
+
 const BASE = "/api";
 
 export async function submitFeedback({ orderId, rating, name, comment }) {
-  const res = await fetch(`${BASE}/feedback`, {
+  const res = await fetch(apiUrl(`${BASE}/orders/${orderId}/feedback`), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ orderId, rating, name, comment }),
+    body: JSON.stringify({ rating, name, comment }),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "Failed to submit feedback");
@@ -19,7 +21,7 @@ export async function createServiceNotification({
   type,
   note,
 }) {
-  const res = await fetch(`${BASE}/service-notifications`, {
+  const res = await fetch(apiUrl(`${BASE}/service-notifications`), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ tableNumber, floor, type, note }),
@@ -37,22 +39,11 @@ export async function listServiceNotifications(params = {}) {
       Object.entries(params).filter(([, v]) => v !== undefined && v !== null),
     ),
   ).toString();
-  const res = await fetch(`${BASE}/service-notifications${qs ? `?${qs}` : ""}`);
-  if (!res.ok) {
-    const text = await res.text().catch(() => "Failed");
-    throw new Error(text || `HTTP ${res.status}`);
-  }
-  return res.json();
+  return api(`${BASE}/service-notifications${qs ? `?${qs}` : ""}`);
 }
 
 export async function resolveServiceNotification(id) {
-  const res = await fetch(`${BASE}/service-notifications/${id}/resolve`, {
+  return api(`${BASE}/service-notifications/${id}/resolve`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
   });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "Failed to resolve");
-    throw new Error(text || `HTTP ${res.status}`);
-  }
-  return res.json();
 }

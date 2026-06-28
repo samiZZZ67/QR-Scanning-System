@@ -2,10 +2,10 @@ import { motion } from "framer-motion";
 import LoadingSpinner from "./LoadingSpinner.jsx";
 
 const VARIANTS = {
-  primary: "bg-gold text-pale-light hover:bg-gold-hover disabled:opacity-50",
+  primary: "bg-gold text-pale-light hover:bg-gold-hover disabled:opacity-50 shadow-sm",
   outline:
-    "border border-gold-muted text-rough hover:border-gold bg-transparent disabled:opacity-40",
-  ghost: "text-rough hover:bg-pale bg-transparent disabled:opacity-40",
+    "border border-gold-muted/40 text-rough hover:border-gold hover:bg-pale-light bg-transparent disabled:opacity-40",
+  ghost: "text-rough hover:bg-surface bg-transparent disabled:opacity-40",
   danger: "bg-red-600 text-white hover:bg-red-700 disabled:opacity-50",
 };
 
@@ -26,6 +26,7 @@ export default function Button({
   loading = false,
   disabled = false,
   className = "",
+  icon = null,
   onClick,
   type = "button",
   ...rest
@@ -38,7 +39,7 @@ export default function Button({
       onClick={onClick}
       disabled={disabled || loading}
       className={[
-        "inline-flex items-center justify-center font-semibold rounded-xl",
+        "inline-flex items-center justify-center font-semibold rounded-lg",
         "transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold",
         "cursor-pointer disabled:cursor-not-allowed",
         VARIANTS[variant] ?? VARIANTS.primary,
@@ -48,6 +49,7 @@ export default function Button({
       {...rest}
     >
       {loading && <LoadingSpinner size="sm" className="text-current" />}
+      {!loading && icon}
       {children}
     </motion.button>
   );

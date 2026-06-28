@@ -1,16 +1,18 @@
-import React, { useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { RefreshCw, Bell } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Bell, CheckCircle2, RefreshCw } from 'lucide-react';
 import { useOrders } from '../hooks/useOrders.js';
 import { useRealtime } from '../hooks/useRealtime.js';
 import { updateOrderStatus } from '../api/orders.js';
 import { listServiceNotifications, resolveServiceNotification } from '../api/feedback.js';
 import Button from '../components/ui/Button.jsx';
-import Badge from '../components/ui/Badge.jsx';
 import LoadingSpinner from '../components/ui/LoadingSpinner.jsx';
 import Notice from '../components/ui/Notice.jsx';
 import { formatTime, STATUS_COLORS } from '../utils/formatting.js';
-import { useEffect } from 'react';
+
+function itemName(item) {
+  return typeof item.name === 'object' ? item.name.en : item.name || `Item #${item.menuItemId}`;
+}
 
 export default function WaiterPage() {
   const { orders, setOrders, loading, error, refresh } = useOrders({ status: 'ready' });
@@ -19,34 +21,35 @@ export default function WaiterPage() {
   const [delivering, setDelivering] = useState(null);
 
   useEffect(() => {
-    listServiceNotifications({ resolved: 'false' })
+    listServiceNotifications({ status: 'open' })
       .then(setNotifications)
       .catch(() => {});
   }, []);
 
-  const handleOrderReady = useCallback((order) => {
+  const handleOrderChange = useCallback((order) => {
     setOrders((prev) => {
-      const exists = prev.find((o) => o.id === order.id);
-      return order.status === 'ready'
-        ? exists ? prev.map((o) => o.id === order.id ? order : o) : [order, ...prev]
-        : prev.filter((o) => o.id !== order.id);
+      const exists = prev.some((item) => item.id === order.id);
+      if (order.status !== 'ready') return prev.filter((item) => item.id !== order.id);
+      return exists
+        ? prev.map((item) => (item.id === order.id ? order : item))
+        : [order, ...prev];
     });
   }, [setOrders]);
 
-  const handleServiceRequest = useCallback((notif) => {
-    setNotifications((prev) => [notif, ...prev]);
+  const handleServiceRequest = useCallback((notification) => {
+    setNotifications((prev) => [notification, ...prev]);
   }, []);
 
-  useRealtime({ room: 'waiter' }, {
-    orderReady: handleOrderReady,
-    serviceRequest: handleServiceRequest
+  useRealtime({ role: 'waiter' }, {
+    'order.statusChanged': handleOrderChange,
+    'serviceNotification.created': handleServiceRequest,
   });
 
   async function markDelivered(order) {
     setDelivering(order.id);
     try {
       await updateOrderStatus(order.id, 'delivered');
-      setOrders((prev) => prev.filter((o) => o.id !== order.id));
+      setOrders((prev) => prev.filter((item) => item.id !== order.id));
       setNotice({ type: 'success', message: `Order #${order.id} delivered.` });
     } catch (err) {
       setNotice({ type: 'error', message: err.message });
@@ -55,12 +58,12 @@ export default function WaiterPage() {
     }
   }
 
-  async function resolveNotif(id) {
+  async function resolveNotification(id) {
     try {
       await resolveServiceNotification(id);
-      setNotifications((prev) => prev.filter((n) => n.id !== id));
-    } catch {
-      // ignore
+      setNotifications((prev) => prev.filter((item) => item.id !== id));
+    } catch (err) {
+      setNotice({ type: 'error', message: err.message || 'Failed to resolve request.' });
     }
   }
 
@@ -74,37 +77,38 @@ export default function WaiterPage() {
       </div>
 
       {notice && <Notice type={notice.type} message={notice.message} onDismiss={() => setNotice(null)} />}
-      {error   && <Notice type="error" message={error} />}
+      {error && <Notice type="error" message={error} />}
 
-      {/* Service notifications */}
       {notifications.length > 0 && (
-        <div className="space-y-2">
+        <section className="space-y-2">
           <h2 className="font-display font-semibold text-rough flex items-center gap-2">
             <Bell size={16} className="text-gold" aria-hidden="true" />
             Service Requests ({notifications.length})
           </h2>
-          {notifications.map((n) => (
-            <div key={n.id} className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between gap-4">
+          {notifications.map((notification) => (
+            <div
+              key={notification.id}
+              className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center justify-between gap-4"
+            >
               <div>
-                <p className="font-medium text-amber-900 text-sm">Table {n.tableNumber}</p>
-                <p className="text-xs text-amber-700">{n.type || 'Assistance requested'}</p>
+                <p className="font-medium text-amber-900 text-sm">Table {notification.tableNumber}</p>
+                <p className="text-xs text-amber-700">{notification.type || 'Assistance requested'}</p>
               </div>
-              <Button size="sm" variant="ghost" onClick={() => resolveNotif(n.id)}>
+              <Button size="sm" variant="ghost" onClick={() => resolveNotification(notification.id)}>
                 Resolve
               </Button>
             </div>
           ))}
-        </div>
+        </section>
       )}
 
-      {/* Ready orders */}
-      <div>
+      <section>
         <h2 className="font-display font-semibold text-rough mb-3">Ready to Deliver</h2>
         {loading ? (
-          <LoadingSpinner size="md" text="Loading..." />
+          <LoadingSpinner size="sm" text="Loading ready orders" />
         ) : orders.length === 0 ? (
           <div className="text-center py-16 text-gold-muted">
-            <p className="text-3xl mb-2">✅</p>
+            <CheckCircle2 size={34} className="mx-auto mb-2 text-gold-muted/50" aria-hidden="true" />
             <p className="font-medium">No orders ready for delivery</p>
           </div>
         ) : (
@@ -117,7 +121,7 @@ export default function WaiterPage() {
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -12 }}
-                  className="bg-surface rounded-2xl border border-gold-muted/40 shadow-card p-5 space-y-3"
+                  className="bg-surface rounded-lg border border-gold-muted/40 shadow-card p-5 space-y-3"
                 >
                   <div className="flex items-start justify-between">
                     <div>
@@ -129,9 +133,9 @@ export default function WaiterPage() {
                     </span>
                   </div>
                   <ul className="text-sm space-y-1">
-                    {(order.items || []).map((item, i) => (
-                      <li key={i} className="flex justify-between text-body">
-                        <span>{item.name || item.menuItemId}</span>
+                    {(order.items || []).map((item, index) => (
+                      <li key={index} className="flex justify-between text-body gap-3">
+                        <span>{itemName(item)}</span>
                         <span className="font-semibold">x{item.quantity}</span>
                       </li>
                     ))}
@@ -149,7 +153,7 @@ export default function WaiterPage() {
             </AnimatePresence>
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }

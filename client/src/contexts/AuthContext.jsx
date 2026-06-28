@@ -1,20 +1,38 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { createSession } from "../api/auth.js";
-import { setStaffPin, getStaffPin, clearStaffPin } from "../api/client.js";
+import { setStaffSession, getStaffToken, clearStaffSession } from "../api/client.js";
 
 const AuthContext = createContext(null);
 
 const ROLE_KEY = "hotel_staff_role";
+const EXPIRES_KEY = "hotel_staff_expires_at_ui";
 
 export function AuthProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return !!getStaffPin();
+    return !!getStaffToken();
   });
   const [role, setRole] = useState(() => {
     return sessionStorage.getItem(ROLE_KEY) || null;
   });
+  const [expiresAt, setExpiresAt] = useState(() => {
+    return sessionStorage.getItem(EXPIRES_KEY) || "";
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [sessionNotice, setSessionNotice] = useState(null);
+
+  useEffect(() => {
+    function handleExpired() {
+      sessionStorage.removeItem(ROLE_KEY);
+      sessionStorage.removeItem(EXPIRES_KEY);
+      setIsAuthenticated(false);
+      setRole(null);
+      setExpiresAt("");
+      setSessionNotice("Your staff session expired. Please sign in again.");
+    }
+    window.addEventListener("staff-session-expired", handleExpired);
+    return () => window.removeEventListener("staff-session-expired", handleExpired);
+  }, []);
 
   /**
    * Authenticate a staff member against the backend session endpoint.
@@ -25,23 +43,28 @@ export function AuthProvider({ children }) {
   async function authenticate(pin, targetRole) {
     setIsLoading(true);
     setError(null);
+    setSessionNotice(null);
     try {
       // Call backend to verify the PIN
-      const res = await createSession(pin, pin);
-      if (res && res.ok) {
-        setStaffPin(pin);
-        sessionStorage.setItem(ROLE_KEY, targetRole);
+      const res = await createSession(pin, targetRole);
+      if (res?.ok && res.token) {
+        setStaffSession({ token: res.token, expiresAt: res.expiresAt });
+        sessionStorage.setItem(ROLE_KEY, res.role || targetRole);
+        sessionStorage.setItem(EXPIRES_KEY, res.expiresAt || "");
         setIsAuthenticated(true);
-        setRole(targetRole);
+        setRole(res.role || targetRole);
+        setExpiresAt(res.expiresAt || "");
         setIsLoading(false);
         return true;
       }
       throw new Error("Verification failed");
     } catch (err) {
-      clearStaffPin();
+      clearStaffSession();
       sessionStorage.removeItem(ROLE_KEY);
+      sessionStorage.removeItem(EXPIRES_KEY);
       setIsAuthenticated(false);
       setRole(null);
+      setExpiresAt("");
       setError(err.message || "Invalid PIN. Please try again.");
       setIsLoading(false);
       return false;
@@ -49,16 +72,28 @@ export function AuthProvider({ children }) {
   }
 
   function logout() {
-    clearStaffPin();
+    clearStaffSession();
     sessionStorage.removeItem(ROLE_KEY);
+    sessionStorage.removeItem(EXPIRES_KEY);
     setIsAuthenticated(false);
     setRole(null);
+    setExpiresAt("");
     setError(null);
+    setSessionNotice(null);
   }
 
   return (
     <AuthContext.Provider
-      value={{ isAuthenticated, role, authenticate, logout, isLoading, error }}
+      value={{
+        isAuthenticated,
+        role,
+        expiresAt,
+        sessionNotice,
+        authenticate,
+        logout,
+        isLoading,
+        error,
+      }}
     >
       {children}
     </AuthContext.Provider>

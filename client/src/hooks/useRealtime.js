@@ -26,7 +26,7 @@ export function useRealtime({ role } = {}, handlers = {}) {
 
   useEffect(() => {
     const socket = getSocket();
-    if (role) socket.emit("join", { role });
+    if (role) socket.emit("subscribe", { role });
 
     // Register one wrapper per event key so we can clean up precisely
     const eventKeys = Object.keys(handlers);

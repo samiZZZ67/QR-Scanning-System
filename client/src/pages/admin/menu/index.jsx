@@ -6,6 +6,7 @@ import Modal from '../../../components/ui/Modal.jsx';
 import Input from '../../../components/ui/Input.jsx';
 import Notice from '../../../components/ui/Notice.jsx';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner.jsx';
+import { TableRowsSkeleton } from '../../../components/ui/Skeleton.jsx';
 import OptimizedImage from '../../../components/ui/OptimizedImage.jsx';
 import Card from '../../../components/ui/Card.jsx';
 import { formatMoney } from '../../../utils/formatting.js';
@@ -255,8 +256,9 @@ export default function MenuTab() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <LoadingSpinner size="lg" text="Retrieving menu items..." />
+        <div className="space-y-3">
+          <LoadingSpinner size="sm" text="Retrieving menu items" />
+          <TableRowsSkeleton rows={6} />
         </div>
       ) : filteredItems.length === 0 ? (
         <Card className="flex flex-col items-center justify-center py-16 text-center text-gold-muted">

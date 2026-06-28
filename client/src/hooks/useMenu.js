@@ -30,5 +30,5 @@ export function useMenu(includeUnavailable = false) {
     refresh();
   }, [refresh]);
 
-  return { categories, items, loading, error, refresh };
+  return { menu: { categories, items }, categories, items, loading, error, refresh };
 }

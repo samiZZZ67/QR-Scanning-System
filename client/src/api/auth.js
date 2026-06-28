@@ -1,4 +1,9 @@
 import { api } from './client.js';
 
-export const createSession = (pin, pinOverride) =>
-  api('/api/staff/session', { method: 'POST', body: { pin }, pinOverride });
+export const createSession = (pin, role) =>
+  api('/api/staff/session', {
+    method: 'POST',
+    body: { pin, role },
+    tokenOverride: '',
+    authOptional: true
+  });

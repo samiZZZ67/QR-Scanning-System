@@ -9,6 +9,7 @@ import { useRealtime } from '../../hooks/useRealtime.js';
 import { placeOrder, getOrder } from '../../api/orders.js';
 import { randomIdempotencyKey, formatMoney } from '../../utils/formatting.js';
 import LoadingSpinner from '../../components/ui/LoadingSpinner.jsx';
+import { MenuGridSkeleton } from '../../components/ui/Skeleton.jsx';
 import Button from '../../components/ui/Button.jsx';
 import DishCard from '../../components/menu/DishCard.jsx';
 import { CategoryFilter } from '../../components/menu/CategoryFilter.jsx';
@@ -98,8 +99,15 @@ export default function CustomerPage() {
   if (loading) {
     return (
       <CustomerLayout>
-        <div className="flex items-center justify-center min-h-screen">
-          <LoadingSpinner size="lg" text="Loading menu..." />
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <div className="h-7 w-32 rounded-lg bg-gold-muted/15 animate-pulse" />
+              <div className="h-3 w-20 rounded-lg bg-gold-muted/15 animate-pulse mt-2" />
+            </div>
+            <LoadingSpinner size="sm" text="Loading menu" />
+          </div>
+          <MenuGridSkeleton />
         </div>
       </CustomerLayout>
     );

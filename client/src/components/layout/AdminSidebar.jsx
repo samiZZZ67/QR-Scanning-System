@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export function AdminSidebar({ activeTab, onTabChange, tabs = [] }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -9,25 +9,29 @@ export function AdminSidebar({ activeTab, onTabChange, tabs = [] }) {
     <motion.aside
       initial={{ x: -10, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      transition={{ type: "spring", stiffness: 300, damping: 30 }}
       className={[
-        'bg-rough flex flex-col transition-all duration-300 relative shrink-0',
-        'border-r border-rough-light/20',
-        collapsed ? 'w-16' : 'w-60'
-      ].join(' ')}
+        "bg-rough flex flex-col transition-all duration-300 fixed left-0 top-14 h-[calc(100vh-3.5rem)] shrink-0 z-40",
+        "border-r border-rough-light/20",
+        collapsed ? "w-16" : "w-60",
+      ].join(" ")}
       aria-label="Admin navigation"
     >
       {/* Logo */}
-      <div className={[
-        'flex items-center gap-3 px-4 py-5 border-b border-rough-light/20',
-        collapsed ? 'justify-center' : ''
-      ].join(' ')}>
-        <span className="text-2xl shrink-0" aria-hidden="true">🏨</span>
+      <div
+        className={[
+          "flex items-center gap-3 px-4 py-5 border-b border-rough-light/20",
+          collapsed ? "justify-center" : "",
+        ].join(" ")}
+      >
+        <span className="text-2xl shrink-0" aria-hidden="true">
+          🏨
+        </span>
         <AnimatePresence>
           {!collapsed && (
             <motion.div
               initial={{ opacity: 0, width: 0 }}
-              animate={{ opacity: 1, width: 'auto' }}
+              animate={{ opacity: 1, width: "auto" }}
               exit={{ opacity: 0, width: 0 }}
               transition={{ duration: 0.2 }}
               className="overflow-hidden"
@@ -35,7 +39,9 @@ export function AdminSidebar({ activeTab, onTabChange, tabs = [] }) {
               <p className="font-display font-semibold text-pale-light text-sm leading-tight whitespace-nowrap">
                 Habesha Grand
               </p>
-              <p className="text-xs text-gold-muted whitespace-nowrap">Admin Panel</p>
+              <p className="text-xs text-gold-muted whitespace-nowrap">
+                Admin Panel
+              </p>
             </motion.div>
           )}
         </AnimatePresence>
@@ -51,13 +57,15 @@ export function AdminSidebar({ activeTab, onTabChange, tabs = [] }) {
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
               aria-label={tab.label}
-              aria-current={isActive ? 'page' : undefined}
+              aria-current={isActive ? "page" : undefined}
               className={[
-                'w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-150 relative',
-                'hover:bg-rough-light/40',
-                collapsed ? 'justify-center' : '',
-                isActive ? 'text-gold-hover bg-rough-light/30' : 'text-pale/70 hover:text-pale'
-              ].join(' ')}
+                "w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-150 relative",
+                "hover:bg-rough-light/40",
+                collapsed ? "justify-center" : "",
+                isActive
+                  ? "text-gold-hover bg-rough-light/30"
+                  : "text-pale/70 hover:text-pale",
+              ].join(" ")}
             >
               {/* Active left border */}
               {isActive && (
@@ -70,7 +78,7 @@ export function AdminSidebar({ activeTab, onTabChange, tabs = [] }) {
                 <Icon
                   size={18}
                   strokeWidth={isActive ? 2 : 1.5}
-                  className={isActive ? 'text-gold-hover' : 'text-pale/50'}
+                  className={isActive ? "text-gold-hover" : "text-pale/50"}
                   aria-hidden="true"
                 />
               )}
@@ -95,13 +103,10 @@ export function AdminSidebar({ activeTab, onTabChange, tabs = [] }) {
       {/* Collapse toggle */}
       <button
         onClick={() => setCollapsed((v) => !v)}
-        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         className="absolute -right-3 top-20 w-6 h-6 bg-rough border border-rough-light/30 rounded-full flex items-center justify-center text-gold-muted hover:text-gold transition-colors shadow-sm z-10"
       >
-        {collapsed
-          ? <ChevronRight size={12} />
-          : <ChevronLeft size={12} />
-        }
+        {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
       </button>
     </motion.aside>
   );

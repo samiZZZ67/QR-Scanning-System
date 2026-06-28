@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { listOrders, updateOrderStatus } from "../api/orders.js";
 
 /**
@@ -38,5 +38,9 @@ export function useOrders(defaultParams = {}) {
     [refresh],
   );
 
-  return { orders, loading, error, refresh, updateStatus };
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return { orders, setOrders, loading, error, refresh, updateStatus };
 }
