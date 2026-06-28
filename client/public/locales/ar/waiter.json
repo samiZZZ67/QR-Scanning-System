@@ -1,0 +1,31 @@
+{
+  "title": "لوحة النادل",
+  "readyToDeliver": "جاهز للتسليم",
+  "serviceRequests": "طلبات الخدمة",
+  "noOrdersReady": "لا توجد طلبات جاهزة للتسليم",
+  "noOrdersReadyDesc": "الطلبات التي علّمها المطبخ بالجاهزية ستظهر هنا.",
+  "noServiceRequests": "لا توجد طلبات خدمة",
+  "table": "طاولة {{number}}",
+  "orderId": "طلب #{{id}}",
+  "readySince": "جاهز منذ {{time}}",
+  "markDelivered": "وضع علامة تم التسليم",
+  "resolve": "حل",
+  "resolveAll": "حل الكل",
+  "requestType": {
+    "waiter": "تم طلب النادل",
+    "bill": "تم طلب الفاتورة",
+    "water": "تم طلب الماء",
+    "other": "تم طلب المساعدة"
+  },
+  "notifications": {
+    "delivered": "تم تسليم الطلب #{{id}}.",
+    "requestResolved": "تم حل طلب الخدمة.",
+    "newRequest": "طلب خدمة جديد من الطاولة {{table}}!"
+  },
+  "filters": {
+    "all": "جميع الطاولات",
+    "floor1": "الطابق 1",
+    "floor2": "الطابق 2"
+  },
+  "refresh": "تحديث"
+}

@@ -1,0 +1,33 @@
+{
+  "title": "የኩሽና ማሳያ",
+  "newOrder": "አዲስ ትዕዛዝ",
+  "noOrders": "አሁን ንቁ ትዕዛዞች የሉም",
+  "noOrdersDesc": "አዲስ ትዕዛዞች በራስ-ሰር ይታያሉ።",
+  "table": "ጠረጴዛ {{number}}",
+  "orderId": "ትዕዛዝ #{{id}}",
+  "receivedAt": "የተቀበለው {{time}}",
+  "items": "ምርቶች",
+  "quantity": "ብዛት",
+  "specialInstructions": "ልዩ መመሪያዎች",
+  "startPreparing": "ማዘጋጀት ጀምር",
+  "markReady": "ተዘጋጅቷል ምልክት አድርግ",
+  "markDelivered": "ደርሷል ምልክት አድርግ",
+  "status": {
+    "received": "ተቀብሏል",
+    "preparing": "እየተዘጋጀ ነው",
+    "ready": "ተዘጋጅቷል",
+    "delivered": "ደርሷል"
+  },
+  "filters": {
+    "all": "ሁሉም",
+    "received": "ተቀብሏል",
+    "preparing": "እየተዘጋጀ ነው"
+  },
+  "notifications": {
+    "orderAdvanced": "ትዕዛዝ #{{id}} አሁን {{status}} ሆኗል።",
+    "newOrderAlert": "ከጠረጴዛ {{table}} አዲስ ትዕዛዝ!"
+  },
+  "refresh": "ዳግም አስጀምር",
+  "autoRefresh": "በ30 ሰከንድ ዳግም አስጀምር",
+  "elapsed": "{{minutes}} ደቂቃ ሆነ"
+}

@@ -1,0 +1,68 @@
+{
+  "menu": {
+    "title": "Our Menu",
+    "allCategories": "All",
+    "searchPlaceholder": "Search dishes...",
+    "noItems": "No items available in this category.",
+    "unavailable": "Currently unavailable",
+    "addToCart": "Add to Cart",
+    "viewDetails": "View Details",
+    "price": "Price",
+    "calories": "kcal",
+    "dietary": {
+      "vegetarian": "Vegetarian",
+      "vegan": "Vegan",
+      "glutenFree": "Gluten Free",
+      "spicy": "Spicy"
+    }
+  },
+  "cart": {
+    "title": "Your Cart",
+    "empty": "Your cart is empty",
+    "emptyDesc": "Browse the menu and add items to get started.",
+    "items": "{{count}} item",
+    "items_plural": "{{count}} items",
+    "subtotal": "Subtotal",
+    "total": "Total",
+    "remove": "Remove",
+    "clear": "Clear Cart",
+    "checkout": "Place Order",
+    "continueShopping": "Continue Shopping"
+  },
+  "order": {
+    "title": "Place Order",
+    "tableNumber": "Table {{number}}",
+    "specialInstructions": "Special Instructions",
+    "specialInstructionsPlaceholder": "Any allergies or special requests?",
+    "placing": "Placing your order...",
+    "success": "Your order has been placed!",
+    "successDesc": "We are preparing your food. You will be notified when it is ready.",
+    "trackOrder": "Track My Order",
+    "statusTitle": "Order Status",
+    "orderId": "Order #{{id}}",
+    "estimatedTime": "Estimated: {{minutes}} min",
+    "noOrders": "No orders yet"
+  },
+  "feedback": {
+    "title": "How was your experience?",
+    "rateYourMeal": "Rate your meal",
+    "overallRating": "Overall Rating",
+    "foodRating": "Food Quality",
+    "serviceRating": "Service",
+    "comment": "Leave a comment",
+    "commentPlaceholder": "Tell us what you think...",
+    "submit": "Submit Feedback",
+    "thankYou": "Thank you for your feedback!",
+    "skip": "Skip for now"
+  },
+  "serviceRequest": {
+    "title": "Request Assistance",
+    "callWaiter": "Call Waiter",
+    "requestBill": "Request Bill",
+    "requestWater": "Request Water",
+    "other": "Other Request",
+    "sent": "Your request has been sent!",
+    "description": "Describe your request",
+    "descriptionPlaceholder": "How can we help you?"
+  }
+}

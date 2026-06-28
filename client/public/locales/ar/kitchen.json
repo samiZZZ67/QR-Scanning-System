@@ -1,0 +1,33 @@
+{
+  "title": "شاشة المطبخ",
+  "newOrder": "طلب جديد",
+  "noOrders": "لا توجد طلبات نشطة الآن",
+  "noOrdersDesc": "ستظهر الطلبات الجديدة هنا تلقائياً.",
+  "table": "طاولة {{number}}",
+  "orderId": "طلب #{{id}}",
+  "receivedAt": "تم الاستلام في {{time}}",
+  "items": "العناصر",
+  "quantity": "الكمية",
+  "specialInstructions": "تعليمات خاصة",
+  "startPreparing": "بدء التحضير",
+  "markReady": "وضع علامة جاهز",
+  "markDelivered": "وضع علامة تم التسليم",
+  "status": {
+    "received": "مستلم",
+    "preparing": "قيد التحضير",
+    "ready": "جاهز",
+    "delivered": "تم التسليم"
+  },
+  "filters": {
+    "all": "الكل",
+    "received": "مستلم",
+    "preparing": "قيد التحضير"
+  },
+  "notifications": {
+    "orderAdvanced": "الطلب #{{id}} أصبح {{status}} الآن.",
+    "newOrderAlert": "طلب جديد من الطاولة {{table}}!"
+  },
+  "refresh": "تحديث",
+  "autoRefresh": "تحديث تلقائي كل 30 ثانية",
+  "elapsed": "منذ {{minutes}} دقيقة"
+}

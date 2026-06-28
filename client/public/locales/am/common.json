@@ -1,0 +1,47 @@
+{
+  "hotelName": "ሀበሻ ግራንድ ሆቴል",
+  "tagline": "ባህልና ቅንጦት የሚገናኙበት",
+  "nav": {
+    "home": "መነሻ",
+    "menu": "ምናሌ",
+    "contact": "ያግኙን",
+    "admin": "አስተዳዳሪ"
+  },
+  "actions": {
+    "save": "አስቀምጥ",
+    "cancel": "ሰርዝ",
+    "delete": "አጥፋ",
+    "edit": "አርም",
+    "add": "ጨምር",
+    "search": "ፈልግ",
+    "loading": "እየጫነ ነው...",
+    "retry": "እንደገና ሞክር",
+    "confirm": "አረጋግጥ",
+    "close": "ዝጋ",
+    "back": "ተመለስ",
+    "next": "ቀጥል",
+    "submit": "አስገባ",
+    "reset": "ዳግም አስጀምር",
+    "view": "ተመልከት",
+    "update": "አዘምን"
+  },
+  "status": {
+    "received": "ተቀብሏል",
+    "preparing": "እየተዘጋጀ ነው",
+    "ready": "ተዘጋጅቷል",
+    "delivered": "ደርሷል",
+    "cancelled": "ተሰርዟል"
+  },
+  "errors": {
+    "generic": "ችግር ተፈጥሯል። እባክዎ እንደገና ይሞክሩ።",
+    "notFound": "አልተገኘም።",
+    "unauthorized": "ይህን ተግባር ለማከናወን ፈቃድ የለዎትም።",
+    "networkError": "የአውታረ መረብ ስህተት። ግንኙነትዎን ያረጋግጡ።",
+    "serverError": "የሰርቨር ስህተት። እባክዎ ቆይተው ይሞክሩ።"
+  },
+  "language": {
+    "en": "English",
+    "am": "አማርኛ",
+    "ar": "العربية"
+  }
+}

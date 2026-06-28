@@ -1,0 +1,31 @@
+{
+  "title": "የአስተናጋጅ ፓነል",
+  "readyToDeliver": "ለማድረስ ዝግጁ",
+  "serviceRequests": "የአገልግሎት ጥያቄዎች",
+  "noOrdersReady": "ምንም ትዕዛዞች ለማድረስ ዝግጁ አይደሉም",
+  "noOrdersReadyDesc": "ከኩሽና ዝግጁ ተብለው የተምከሩ ትዕዛዞች እዚህ ይታያሉ።",
+  "noServiceRequests": "ምንም የአገልግሎት ጥያቄዎች የሉም",
+  "table": "ጠረጴዛ {{number}}",
+  "orderId": "ትዕዛዝ #{{id}}",
+  "readySince": "ዝግጁ ከ{{time}} ጀምሮ",
+  "markDelivered": "ደርሷል ምልክት አድርግ",
+  "resolve": "ፍታ",
+  "resolveAll": "ሁሉንም ፍታ",
+  "requestType": {
+    "waiter": "አስተናጋጅ ተጠይቋል",
+    "bill": "ሂሳብ ተጠይቋል",
+    "water": "ውሃ ተጠይቋል",
+    "other": "እርዳታ ተጠይቋል"
+  },
+  "notifications": {
+    "delivered": "ትዕዛዝ #{{id}} ደርሷል ተብሏል።",
+    "requestResolved": "የአገልግሎት ጥያቄ ተፍቷል።",
+    "newRequest": "ከጠረጴዛ {{table}} አዲስ የአገልግሎት ጥያቄ!"
+  },
+  "filters": {
+    "all": "ሁሉም ጠረጴዛዎች",
+    "floor1": "ፎቅ 1",
+    "floor2": "ፎቅ 2"
+  },
+  "refresh": "ዳግም አስጀምር"
+}

@@ -1,0 +1,31 @@
+{
+  "title": "Waiter Panel",
+  "readyToDeliver": "Ready to Deliver",
+  "serviceRequests": "Service Requests",
+  "noOrdersReady": "No orders ready for delivery",
+  "noOrdersReadyDesc": "Orders marked as ready by the kitchen will appear here.",
+  "noServiceRequests": "No service requests",
+  "table": "Table {{number}}",
+  "orderId": "Order #{{id}}",
+  "readySince": "Ready since {{time}}",
+  "markDelivered": "Mark Delivered",
+  "resolve": "Resolve",
+  "resolveAll": "Resolve All",
+  "requestType": {
+    "waiter": "Waiter requested",
+    "bill": "Bill requested",
+    "water": "Water requested",
+    "other": "Assistance requested"
+  },
+  "notifications": {
+    "delivered": "Order #{{id}} marked as delivered.",
+    "requestResolved": "Service request resolved.",
+    "newRequest": "New service request from Table {{table}}!"
+  },
+  "filters": {
+    "all": "All Tables",
+    "floor1": "Floor 1",
+    "floor2": "Floor 2"
+  },
+  "refresh": "Refresh"
+}

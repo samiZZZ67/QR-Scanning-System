@@ -1,0 +1,68 @@
+{
+  "menu": {
+    "title": "قائمتنا",
+    "allCategories": "الكل",
+    "searchPlaceholder": "ابحث عن الأطباق...",
+    "noItems": "لا توجد عناصر في هذه الفئة.",
+    "unavailable": "غير متوفر حالياً",
+    "addToCart": "أضف إلى السلة",
+    "viewDetails": "عرض التفاصيل",
+    "price": "السعر",
+    "calories": "سعرة حرارية",
+    "dietary": {
+      "vegetarian": "نباتي",
+      "vegan": "نباتي صارم",
+      "glutenFree": "خالٍ من الغلوتين",
+      "spicy": "حار"
+    }
+  },
+  "cart": {
+    "title": "سلتك",
+    "empty": "سلتك فارغة",
+    "emptyDesc": "تصفح القائمة وأضف العناصر للبدء.",
+    "items": "{{count}} عنصر",
+    "items_plural": "{{count}} عناصر",
+    "subtotal": "المجموع الفرعي",
+    "total": "الإجمالي",
+    "remove": "إزالة",
+    "clear": "مسح السلة",
+    "checkout": "تقديم الطلب",
+    "continueShopping": "مواصلة التسوق"
+  },
+  "order": {
+    "title": "تقديم الطلب",
+    "tableNumber": "طاولة {{number}}",
+    "specialInstructions": "تعليمات خاصة",
+    "specialInstructionsPlaceholder": "هل لديك حساسية أو طلبات خاصة؟",
+    "placing": "جارٍ تقديم طلبك...",
+    "success": "تم تقديم طلبك!",
+    "successDesc": "نقوم بتحضير طعامك. سيتم إخطارك عند جاهزيته.",
+    "trackOrder": "تتبع طلبي",
+    "statusTitle": "حالة الطلب",
+    "orderId": "طلب #{{id}}",
+    "estimatedTime": "الوقت المقدر: {{minutes}} دقيقة",
+    "noOrders": "لا طلبات حتى الآن"
+  },
+  "feedback": {
+    "title": "كيف كانت تجربتك؟",
+    "rateYourMeal": "قيّم وجبتك",
+    "overallRating": "التقييم العام",
+    "foodRating": "جودة الطعام",
+    "serviceRating": "الخدمة",
+    "comment": "اترك تعليقاً",
+    "commentPlaceholder": "أخبرنا برأيك...",
+    "submit": "إرسال التقييم",
+    "thankYou": "شكراً على تقييمك!",
+    "skip": "تخطي الآن"
+  },
+  "serviceRequest": {
+    "title": "طلب مساعدة",
+    "callWaiter": "استدعاء النادل",
+    "requestBill": "طلب الفاتورة",
+    "requestWater": "طلب ماء",
+    "other": "طلب آخر",
+    "sent": "تم إرسال طلبك!",
+    "description": "صف طلبك",
+    "descriptionPlaceholder": "كيف يمكننا مساعدتك؟"
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "menu": {
+    "title": "ምናሌያችን",
+    "allCategories": "ሁሉም",
+    "searchPlaceholder": "ምግብ ፈልግ...",
+    "noItems": "በዚህ ምድብ ምንም ምናሌ የለም።",
+    "unavailable": "በአሁኑ ጊዜ አይገኝም",
+    "addToCart": "ወደ ቅርጫት ጨምር",
+    "viewDetails": "ዝርዝር ተመልከት",
+    "price": "ዋጋ",
+    "calories": "ካሎሪ",
+    "dietary": {
+      "vegetarian": "채식주의자",
+      "vegan": "ቬጋን",
+      "glutenFree": "ያለ ግሉተን",
+      "spicy": "매운"
+    }
+  },
+  "cart": {
+    "title": "ቅርጫትዎ",
+    "empty": "ቅርጫትዎ ባዶ ነው",
+    "emptyDesc": "ምናሌውን ያስሱ እና ምርቶችን ይጨምሩ።",
+    "items": "{{count}} ምርት",
+    "items_plural": "{{count}} ምርቶች",
+    "subtotal": "ንዑስ ድምር",
+    "total": "ጠቅላላ",
+    "remove": "አስወግድ",
+    "clear": "ቅርጫት አጥፋ",
+    "checkout": "ትዕዛዝ ስጥ",
+    "continueShopping": "መግዛት ቀጥል"
+  },
+  "order": {
+    "title": "ትዕዛዝ ስጥ",
+    "tableNumber": "ጠረጴዛ {{number}}",
+    "specialInstructions": "ልዩ መመሪያዎች",
+    "specialInstructionsPlaceholder": "አለርጂ ወይም ልዩ ጥያቄ አለ?",
+    "placing": "ትዕዛዝ እየሰጠ ነው...",
+    "success": "ትዕዛዝዎ ተቀብሏል!",
+    "successDesc": "ምግብዎን እያዘጋጀን ነን። ሲዘጋጅ ይነገርዎታል።",
+    "trackOrder": "ትዕዛዝ ክትትል",
+    "statusTitle": "የትዕዛዝ ሁኔታ",
+    "orderId": "ትዕዛዝ #{{id}}",
+    "estimatedTime": "ግምታዊ: {{minutes}} ደቂቃ",
+    "noOrders": "እስካሁን ትዕዛዝ የለም"
+  },
+  "feedback": {
+    "title": "ተሞክሮዎ እንዴት ነበር?",
+    "rateYourMeal": "ምግብዎን ይምዘኑ",
+    "overallRating": "አጠቃላይ ደረጃ",
+    "foodRating": "የምግብ ጥራት",
+    "serviceRating": "አገልግሎት",
+    "comment": "አስተያየት ጻፍ",
+    "commentPlaceholder": "ምን አስበዋል?...",
+    "submit": "አስተያየት አስገባ",
+    "thankYou": "ለአስተያየትዎ እናመሰግናለን!",
+    "skip": "ለጊዜው ዝለል"
+  },
+  "serviceRequest": {
+    "title": "እርዳታ ጠይቅ",
+    "callWaiter": "አስተናጋጅ ጥራ",
+    "requestBill": "ሂሳብ ጠይቅ",
+    "requestWater": "ውሃ ጠይቅ",
+    "other": "ሌላ ጥያቄ",
+    "sent": "ጥያቄዎ ተልኳል!",
+    "description": "ጥያቄዎን ይግለጹ",
+    "descriptionPlaceholder": "እንዴት ልርዳዎ?"
+  }
+}

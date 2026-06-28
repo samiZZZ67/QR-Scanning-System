@@ -1,0 +1,33 @@
+{
+  "title": "Kitchen Display",
+  "newOrder": "New Order",
+  "noOrders": "No active orders right now",
+  "noOrdersDesc": "New orders will appear here automatically.",
+  "table": "Table {{number}}",
+  "orderId": "Order #{{id}}",
+  "receivedAt": "Received at {{time}}",
+  "items": "Items",
+  "quantity": "Qty",
+  "specialInstructions": "Special Instructions",
+  "startPreparing": "Start Preparing",
+  "markReady": "Mark Ready",
+  "markDelivered": "Mark Delivered",
+  "status": {
+    "received": "Received",
+    "preparing": "Preparing",
+    "ready": "Ready",
+    "delivered": "Delivered"
+  },
+  "filters": {
+    "all": "All",
+    "received": "Received",
+    "preparing": "Preparing"
+  },
+  "notifications": {
+    "orderAdvanced": "Order #{{id}} is now {{status}}.",
+    "newOrderAlert": "New order from Table {{table}}!"
+  },
+  "refresh": "Refresh",
+  "autoRefresh": "Auto-refresh every 30s",
+  "elapsed": "{{minutes}}m ago"
+}

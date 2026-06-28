@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@theme {
+    /* ── Brand palette ── */
+    --color-pale: #faf6ef;
+    --color-pale-light: #fdfaf6;
+    --color-surface: #f3ebe0;
+    --color-rough: #1a0e05;
+    --color-gold: #c9a838;
+    --color-gold-hover: #b89228;
+    --color-gold-muted: #d4b85a;
+    --color-off-navy: #1a1f3a;
+
+    /* ── Typography ── */
+    --font-display: "Playfair Display", Georgia, serif;
+    --font-sans: "Inter", system-ui, sans-serif;
+
+    /* ── Easing ── */
+    --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Global resets */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: var(--font-sans);
+    background-color: var(--color-pale);
+    color: var(--color-rough);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: var(--font-display);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    width: 6px;
+}
+::-webkit-scrollbar-track {
+    background: var(--color-pale);
+}
+::-webkit-scrollbar-thumb {
+    background: var(--color-gold-muted);
+    border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-gold);
+}

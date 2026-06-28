@@ -1,0 +1,155 @@
+import React, { useState, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { RefreshCw, Bell } from 'lucide-react';
+import { useOrders } from '../hooks/useOrders.js';
+import { useRealtime } from '../hooks/useRealtime.js';
+import { updateOrderStatus } from '../api/orders.js';
+import { listServiceNotifications, resolveServiceNotification } from '../api/feedback.js';
+import Button from '../components/ui/Button.jsx';
+import Badge from '../components/ui/Badge.jsx';
+import LoadingSpinner from '../components/ui/LoadingSpinner.jsx';
+import Notice from '../components/ui/Notice.jsx';
+import { formatTime, STATUS_COLORS } from '../utils/formatting.js';
+import { useEffect } from 'react';
+
+export default function WaiterPage() {
+  const { orders, setOrders, loading, error, refresh } = useOrders({ status: 'ready' });
+  const [notifications, setNotifications] = useState([]);
+  const [notice, setNotice] = useState(null);
+  const [delivering, setDelivering] = useState(null);
+
+  useEffect(() => {
+    listServiceNotifications({ resolved: 'false' })
+      .then(setNotifications)
+      .catch(() => {});
+  }, []);
+
+  const handleOrderReady = useCallback((order) => {
+    setOrders((prev) => {
+      const exists = prev.find((o) => o.id === order.id);
+      return order.status === 'ready'
+        ? exists ? prev.map((o) => o.id === order.id ? order : o) : [order, ...prev]
+        : prev.filter((o) => o.id !== order.id);
+    });
+  }, [setOrders]);
+
+  const handleServiceRequest = useCallback((notif) => {
+    setNotifications((prev) => [notif, ...prev]);
+  }, []);
+
+  useRealtime({ room: 'waiter' }, {
+    orderReady: handleOrderReady,
+    serviceRequest: handleServiceRequest
+  });
+
+  async function markDelivered(order) {
+    setDelivering(order.id);
+    try {
+      await updateOrderStatus(order.id, 'delivered');
+      setOrders((prev) => prev.filter((o) => o.id !== order.id));
+      setNotice({ type: 'success', message: `Order #${order.id} delivered.` });
+    } catch (err) {
+      setNotice({ type: 'error', message: err.message });
+    } finally {
+      setDelivering(null);
+    }
+  }
+
+  async function resolveNotif(id) {
+    try {
+      await resolveServiceNotification(id);
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+    } catch {
+      // ignore
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="font-display text-2xl font-bold text-rough">Waiter Panel</h1>
+        <Button variant="ghost" size="sm" icon={<RefreshCw size={15} />} onClick={refresh}>
+          Refresh
+        </Button>
+      </div>
+
+      {notice && <Notice type={notice.type} message={notice.message} onDismiss={() => setNotice(null)} />}
+      {error   && <Notice type="error" message={error} />}
+
+      {/* Service notifications */}
+      {notifications.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="font-display font-semibold text-rough flex items-center gap-2">
+            <Bell size={16} className="text-gold" aria-hidden="true" />
+            Service Requests ({notifications.length})
+          </h2>
+          {notifications.map((n) => (
+            <div key={n.id} className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between gap-4">
+              <div>
+                <p className="font-medium text-amber-900 text-sm">Table {n.tableNumber}</p>
+                <p className="text-xs text-amber-700">{n.type || 'Assistance requested'}</p>
+              </div>
+              <Button size="sm" variant="ghost" onClick={() => resolveNotif(n.id)}>
+                Resolve
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Ready orders */}
+      <div>
+        <h2 className="font-display font-semibold text-rough mb-3">Ready to Deliver</h2>
+        {loading ? (
+          <LoadingSpinner size="md" text="Loading..." />
+        ) : orders.length === 0 ? (
+          <div className="text-center py-16 text-gold-muted">
+            <p className="text-3xl mb-2">✅</p>
+            <p className="font-medium">No orders ready for delivery</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            <AnimatePresence>
+              {orders.map((order) => (
+                <motion.div
+                  key={order.id}
+                  layout
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  className="bg-surface rounded-2xl border border-gold-muted/40 shadow-card p-5 space-y-3"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="font-bold text-rough">Table {order.tableNumber}</p>
+                      <p className="text-xs text-gold-muted">{formatTime(order.createdAt)}</p>
+                    </div>
+                    <span className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${STATUS_COLORS.ready}`}>
+                      Ready
+                    </span>
+                  </div>
+                  <ul className="text-sm space-y-1">
+                    {(order.items || []).map((item, i) => (
+                      <li key={i} className="flex justify-between text-body">
+                        <span>{item.name || item.menuItemId}</span>
+                        <span className="font-semibold">x{item.quantity}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    loading={delivering === order.id}
+                    onClick={() => markDelivered(order)}
+                  >
+                    Mark Delivered
+                  </Button>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
