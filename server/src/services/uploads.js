@@ -1,6 +1,14 @@
 import { createHash } from 'node:crypto';
 import config from '../config/env.js';
 
+const MAX_INLINE_IMAGE_BYTES = Number(process.env.MAX_INLINE_IMAGE_BYTES || 4 * 1024 * 1024);
+const ALLOWED_DATA_IMAGE_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif'
+]);
+
 function getCloudinaryConfig() {
   // CLOUDINARY_URL takes precedence and encodes all three credentials
   if (process.env.CLOUDINARY_URL) {
@@ -42,8 +50,26 @@ function ensureImageInput(input = {}) {
   if (!file || typeof file !== 'string') {
     throw new Error('Image file or image URL is required');
   }
-  if (input.dataUrl && !input.dataUrl.startsWith('data:image/')) {
-    throw new Error('Only image uploads are supported');
+  if (input.dataUrl) {
+    const match = input.dataUrl.match(/^data:(image\/[a-z0-9.+-]+);base64,([a-z0-9+/=\s]+)$/i);
+    if (!match || !ALLOWED_DATA_IMAGE_TYPES.has(match[1].toLowerCase())) {
+      throw new Error('Only JPEG, PNG, WebP, and GIF image uploads are supported');
+    }
+    const bytes = Math.floor((match[2].replace(/\s/g, '').length * 3) / 4);
+    if (bytes > MAX_INLINE_IMAGE_BYTES) {
+      throw new Error('Image is too large. Please upload an image under 4 MB.');
+    }
+    return file;
+  }
+  if (input.sourceUrl || input.url) {
+    try {
+      const parsed = new URL(file);
+      if (!['https:', 'http:'].includes(parsed.protocol)) {
+        throw new Error('Only HTTP or HTTPS image URLs are supported');
+      }
+    } catch {
+      throw new Error('A valid image URL is required');
+    }
   }
   return file;
 }

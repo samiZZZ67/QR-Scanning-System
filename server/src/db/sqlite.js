@@ -15,6 +15,8 @@ import {
   defaultAssets,
   fallbackMenuImage
 } from './seed.js';
+import { buildDemoNotifications, buildDemoOrders } from './demoData.js';
+import config from '../config/env.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -302,6 +304,128 @@ function seed(db) {
       VALUES (?, ?, ?, ?, '', ?)
       ON CONFLICT(key) DO NOTHING
     `).run(asset.key, asset.label, asset.url, asset.thumbnail, nowIso());
+  }
+
+  if (config.sampleDataMode === 'full') {
+    seedFullDemo(db);
+  }
+}
+
+function seedFullDemo(db) {
+  const menuRows = db.prepare('SELECT * FROM menu_items ORDER BY sort_order, id').all();
+  const menuById = new Map(menuRows.map((row) => [row.id, row]));
+  const demoOrders = buildDemoOrders(menuRows);
+
+  const insertOrder = db.prepare(`
+    INSERT INTO orders
+      (table_number, floor, status, notes, total, idempotency_key, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  const insertOrderItem = db.prepare(`
+    INSERT INTO order_items
+      (order_id, menu_item_id, name_json, unit_price, quantity, line_total)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+  const insertFeedback = db.prepare(`
+    INSERT INTO order_feedback
+      (order_id, table_number, floor, rating, name, comment, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+  const insertReview = db.prepare(`
+    INSERT INTO menu_reviews
+      (menu_item_id, order_id, table_number, rating, name, comment, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  for (const order of demoOrders) {
+    const existing = db
+      .prepare('SELECT id FROM orders WHERE idempotency_key = ?')
+      .get(order.key);
+    if (existing) continue;
+
+    const snapshots = order.items
+      .map((requested) => {
+        const row = menuById.get(requested.menuItemId);
+        if (!row) return null;
+        const quantity = Number(requested.quantity || 1);
+        return {
+          menuItemId: row.id,
+          nameJson: row.name_json,
+          unitPrice: row.price,
+          quantity,
+          lineTotal: row.price * quantity
+        };
+      })
+      .filter(Boolean);
+    if (!snapshots.length) continue;
+
+    const total = snapshots.reduce((sum, item) => sum + item.lineTotal, 0);
+    const floor = deriveFloor(order.tableNumber);
+    const info = insertOrder.run(
+      order.tableNumber,
+      floor,
+      order.status,
+      order.notes || '',
+      total,
+      order.key,
+      order.createdAt,
+      order.createdAt
+    );
+
+    for (const item of snapshots) {
+      insertOrderItem.run(
+        info.lastInsertRowid,
+        item.menuItemId,
+        item.nameJson,
+        item.unitPrice,
+        item.quantity,
+        item.lineTotal
+      );
+    }
+
+    if (order.feedback) {
+      insertFeedback.run(
+        info.lastInsertRowid,
+        order.tableNumber,
+        floor,
+        order.feedback.rating,
+        order.feedback.name,
+        order.feedback.comment,
+        order.createdAt
+      );
+      for (const item of snapshots) {
+        insertReview.run(
+          item.menuItemId,
+          info.lastInsertRowid,
+          order.tableNumber,
+          order.feedback.rating,
+          order.feedback.name,
+          order.feedback.comment,
+          order.createdAt
+        );
+      }
+    }
+  }
+
+  const notificationCount = db
+    .prepare("SELECT COUNT(*) AS count FROM service_notifications WHERE created_at LIKE ?")
+    .get(`${new Date().toISOString().slice(0, 10)}%`).count;
+  if (!notificationCount) {
+    const insertNotification = db.prepare(`
+      INSERT INTO service_notifications
+        (type, table_number, floor, status, created_at, resolved_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+    for (const item of buildDemoNotifications()) {
+      insertNotification.run(
+        item.type,
+        item.tableNumber,
+        item.floor,
+        item.status,
+        item.createdAt,
+        item.resolvedAt || null
+      );
+    }
   }
 }
 
@@ -616,8 +740,17 @@ function buildRepository(db) {
         params.push(Number(filters.floor));
       }
       if (filters.status) {
-        where.push('status = ?');
-        params.push(filters.status);
+        const statuses = String(filters.status)
+          .split(',')
+          .map((status) => status.trim())
+          .filter(Boolean);
+        if (statuses.length > 1) {
+          where.push(`status IN (${statuses.map(() => '?').join(', ')})`);
+          params.push(...statuses);
+        } else {
+          where.push('status = ?');
+          params.push(filters.status);
+        }
       }
       if (filters.active) {
         where.push("status != 'delivered'");

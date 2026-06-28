@@ -13,6 +13,8 @@ import {
   defaultAssets,
   fallbackMenuImage
 } from './seed.js';
+import { buildDemoNotifications, buildDemoOrders } from './demoData.js';
+import config from '../config/env.js';
 
 const { Pool } = pg;
 
@@ -323,6 +325,145 @@ async function seed(pool) {
        ON CONFLICT (key) DO NOTHING`,
       [asset.key, asset.label, asset.url, asset.thumbnail, nowIso()]
     );
+  }
+
+  if (config.sampleDataMode === 'full') {
+    await seedFullDemo(pool);
+  }
+}
+
+async function seedFullDemo(pool) {
+  const menuRows = (
+    await pool.query('SELECT * FROM menu_items ORDER BY sort_order, id')
+  ).rows;
+  const menuById = new Map(menuRows.map((row) => [row.id, row]));
+
+  for (const order of buildDemoOrders(menuRows)) {
+    const existing = (
+      await pool.query('SELECT id FROM orders WHERE idempotency_key = $1', [order.key])
+    ).rows[0];
+    if (existing) continue;
+
+    const snapshots = order.items
+      .map((requested) => {
+        const row = menuById.get(requested.menuItemId);
+        if (!row) return null;
+        const quantity = Number(requested.quantity || 1);
+        const unitPrice = Number(row.price);
+        return {
+          menuItemId: row.id,
+          nameJson: row.name_json,
+          unitPrice,
+          quantity,
+          lineTotal: unitPrice * quantity
+        };
+      })
+      .filter(Boolean);
+    if (!snapshots.length) continue;
+
+    const total = snapshots.reduce((sum, item) => sum + item.lineTotal, 0);
+    const floor = deriveFloor(order.tableNumber);
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const inserted = await client.query(
+        `INSERT INTO orders
+           (table_number, floor, status, notes, total, idempotency_key, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
+         RETURNING id`,
+        [
+          order.tableNumber,
+          floor,
+          order.status,
+          order.notes || '',
+          total,
+          order.key,
+          order.createdAt
+        ]
+      );
+      const orderId = inserted.rows[0].id;
+
+      for (const item of snapshots) {
+        await client.query(
+          `INSERT INTO order_items
+             (order_id, menu_item_id, name_json, unit_price, quantity, line_total)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [
+            orderId,
+            item.menuItemId,
+            item.nameJson,
+            item.unitPrice,
+            item.quantity,
+            item.lineTotal
+          ]
+        );
+      }
+
+      if (order.feedback) {
+        await client.query(
+          `INSERT INTO order_feedback
+             (order_id, table_number, floor, rating, name, comment, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [
+            orderId,
+            order.tableNumber,
+            floor,
+            order.feedback.rating,
+            order.feedback.name,
+            order.feedback.comment,
+            order.createdAt
+          ]
+        );
+        for (const item of snapshots) {
+          await client.query(
+            `INSERT INTO menu_reviews
+               (menu_item_id, order_id, table_number, rating, name, comment, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [
+              item.menuItemId,
+              orderId,
+              order.tableNumber,
+              order.feedback.rating,
+              order.feedback.name,
+              order.feedback.comment,
+              order.createdAt
+            ]
+          );
+        }
+      }
+
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  const notificationCount = Number(
+    (
+      await pool.query(
+        "SELECT COUNT(*) AS count FROM service_notifications WHERE created_at::date = CURRENT_DATE"
+      )
+    ).rows[0].count
+  );
+  if (!notificationCount) {
+    for (const item of buildDemoNotifications()) {
+      await pool.query(
+        `INSERT INTO service_notifications
+           (type, table_number, floor, status, created_at, resolved_at)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          item.type,
+          item.tableNumber,
+          item.floor,
+          item.status,
+          item.createdAt,
+          item.resolvedAt || null
+        ]
+      );
+    }
   }
 }
 
@@ -663,8 +804,20 @@ export async function createPostgresRepository(
         where.push(`floor = $${params.length}`);
       }
       if (filters.status) {
-        params.push(filters.status);
-        where.push(`status = $${params.length}`);
+        const statuses = String(filters.status)
+          .split(',')
+          .map((status) => status.trim())
+          .filter(Boolean);
+        if (statuses.length > 1) {
+          const placeholders = statuses.map((status) => {
+            params.push(status);
+            return `$${params.length}`;
+          });
+          where.push(`status IN (${placeholders.join(', ')})`);
+        } else {
+          params.push(filters.status);
+          where.push(`status = $${params.length}`);
+        }
       }
       if (filters.active) {
         where.push("status != 'delivered'");

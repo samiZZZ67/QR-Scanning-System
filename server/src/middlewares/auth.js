@@ -1,23 +1,36 @@
 import { timingSafeEqual } from 'node:crypto';
 import config from '../config/env.js';
+import { verifyStaffSession } from '../security/session.js';
 
-/**
- * Middleware: validates the x-staff-pin header using constant-time comparison
- * to prevent timing-based brute-force attacks.
- */
-export function requireStaffPin(req, res, next) {
-  const provided = req.get('x-staff-pin') || '';
+function staffPinMatches(provided) {
   const expected = config.staffPin;
   try {
-    // Pad both strings to the same fixed length before comparison
-    // to avoid length leakage while still catching wrong-length pins below.
-    const a = Buffer.from(provided.padEnd(64));
+    const a = Buffer.from(String(provided || '').padEnd(64));
     const b = Buffer.from(expected.padEnd(64));
-    if (provided.length === expected.length && timingSafeEqual(a, b)) {
-      return next();
-    }
+    return provided.length === expected.length && timingSafeEqual(a, b);
   } catch {
-    // Any unexpected error falls through to the 401 below
+    return false;
   }
-  return res.status(401).json({ error: 'Staff PIN required' });
+}
+
+/**
+ * Middleware: validates a signed staff session token.
+ * Temporary compatibility: x-staff-pin still works for external integrations.
+ */
+export function requireStaffPin(req, res, next) {
+  const authorization = req.get('authorization') || '';
+  const [, token] = authorization.match(/^Bearer\s+(.+)$/i) || [];
+  const session = verifyStaffSession(token);
+  if (session) {
+    req.staff = session;
+    return next();
+  }
+
+  const provided = req.get('x-staff-pin') || '';
+  if (provided && staffPinMatches(provided)) {
+    req.staff = { role: 'Staff', legacyPin: true };
+    return next();
+  }
+
+  return res.status(401).json({ error: 'Staff session required' });
 }

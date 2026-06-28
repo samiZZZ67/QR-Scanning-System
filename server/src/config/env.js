@@ -2,6 +2,7 @@ import 'dotenv/config';
 
 const nodeEnv = process.env.NODE_ENV || 'development';
 const staffPin = process.env.STAFF_PIN || '1234';
+const sessionSecret = process.env.SESSION_SECRET || '';
 
 if (nodeEnv === 'production' && staffPin === '1234') {
   console.warn(
@@ -10,14 +11,23 @@ if (nodeEnv === 'production' && staffPin === '1234') {
   );
 }
 
+if (nodeEnv === 'production' && !sessionSecret) {
+  throw new Error('SESSION_SECRET is required in production.');
+}
+
 const config = Object.freeze({
   port: Number(process.env.PORT) || 5000,
   host: process.env.HOST || '0.0.0.0',
   nodeEnv,
   staffPin,
+  sampleDataMode: process.env.SAMPLE_DATA_MODE || 'base',
 
   databasePath: process.env.DATABASE_PATH || './data/hotel.sqlite',
   databaseUrl: process.env.DATABASE_URL || '',
+  sessionSecret:
+    sessionSecret ||
+    'dev-only-session-secret-change-me-before-production',
+  sessionTtlMinutes: Number(process.env.SESSION_TTL_MINUTES || 8 * 60),
 
   publicBaseUrl: process.env.PUBLIC_BASE_URL || 'http://localhost:5173',
 
