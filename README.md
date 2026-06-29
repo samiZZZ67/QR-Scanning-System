@@ -1,6 +1,6 @@
 # Hotel Digital Menu MVP
 
-A polished QR-based hotel and restaurant ordering system with a modern customer experience, staff dashboards, admin controls, image support, feedback collection, and Grok AI integration.
+A polished QR-based hotel and restaurant ordering system with a modern customer experience, staff dashboards, admin controls, image support, feedback collection, and Groq AI integration.
 
 ## Overview
 
@@ -8,15 +8,15 @@ This project already includes a working full-stack experience for:
 
 - Customer QR/table ordering
 - Kitchen order processing
-- Waiter service requests
-- Admin menu, categories, tables, orders, assets, and feedback
+- Waiter service requests and manager escalation calls
+- Admin menu, categories, tables, orders, manager calls, assets, and feedback
 - Real-time updates with Socket.IO
 - Multi-language UI support in English, Amharic, and Arabic
 - Image upload and preview for menu items and categories
 - Customer feedback after delivery
 - Dedicated item detail pages for menu dishes
 - Admin search for faster content management
-- Grok AI for translation, writing assistance, and image generation
+- Groq AI for translation, writing assistance, and image generation
 
 ## How it works
 
@@ -44,7 +44,7 @@ Staff users can access:
 - `/kitchen` for kitchen workflow
 - `/waiter` for waiter service and ready orders
 
-Staff views use a shared PIN and support floor filtering for larger properties.
+Staff views use a shared PIN, can call a manager for assistance, and support floor-aware operations for larger properties.
 
 ### Admin experience
 
@@ -53,10 +53,11 @@ Admins can access `/admin` and manage:
 - menu items
 - categories
 - tables
+- manager calls
 - orders
 - feedback
 - images and banners
-- Grok AI assistance
+- Groq AI assistance
 
 The admin panel also includes search for menu items to make management faster.
 
@@ -69,10 +70,11 @@ The Express backend handles:
 - table CRUD
 - order creation and status updates
 - service notifications
+- manager notifications
 - feedback submission
 - report generation
 - image upload handling
-- Grok AI requests
+- Groq AI requests
 
 The application uses SQLite by default and can also connect to PostgreSQL when `DATABASE_URL` is provided.
 
@@ -83,6 +85,7 @@ Socket.IO keeps the experience live for:
 - menu changes
 - new orders
 - status changes
+- service and manager notifications
 - new feedback
 - uploaded assets
 
@@ -98,9 +101,11 @@ Socket.IO keeps the experience live for:
 - Customer ratings and review display
 - Customer feedback after delivery with star ratings
 - Admin search bar for fast menu management
-- Grok AI assistant for translation, writing, and image generation
+- Groq AI assistant for translation, writing, and image generation
 - Real-time status and asset updates with Socket.IO
 - Fixed sidebar navigation in admin panel
+- Manager Calls dashboard for staff escalations and resolution history
+- Kitchen and waiter Call Manager workflow
 - Staff authentication gate with PIN verification
 - Skeleton loading components for better UX
 - Improved error handling and form validation
@@ -157,7 +162,7 @@ cp .env.example .env
 
 Important server variables:
 
-- `PORT` — backend port, default `3000`
+- `PORT` — backend port, default `5000`
 - `HOST` — host binding, default `0.0.0.0`
 - `DATABASE_PATH` — SQLite file path for local development (default: `data/hotel.sqlite`)
 - `DATABASE_URL` — PostgreSQL connection string for production
@@ -165,7 +170,7 @@ Important server variables:
 - `PUBLIC_BASE_URL` — base URL used for QR links
 - `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` — optional Telegram notifications
 - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` — optional cloud image storage
-- `GROK_API_KEY` or `XAI_API_KEY` — Grok AI access
+- `GROQ_API_KEY` or `XAI_API_KEY` — Groq AI access
 
 ### Run locally
 
@@ -184,7 +189,7 @@ npm run dev
 ```
 
 The frontend will be available at `http://localhost:5173`
-The backend will be running at `http://localhost:3000`
+The backend will be running at `http://localhost:5000`
 
 **Production build:**
 
@@ -193,9 +198,8 @@ The backend will be running at `http://localhost:3000`
 cd client
 npm run build
 
-# Build and start server
+# Start server
 cd ../server
-npm run build
 npm start
 ```
 
@@ -227,12 +231,15 @@ npm start
 - `PATCH /api/orders/:id/status`
 - `GET /api/service-notifications`
 - `PATCH /api/service-notifications/:id/resolve`
+- `POST /api/manager-notifications`
+- `GET /api/manager-notifications`
+- `PATCH /api/manager-notifications/:id/resolve`
 - `GET /api/reports/today`
 - `GET /api/assets`
 - `PATCH /api/assets/:key`
 - `POST /api/uploads/image`
-- `POST /api/ai/grok`
-- `POST /api/ai/grok/image`
+- `POST /api/ai/groq`
+- `POST /api/ai/groq/image`
 
 ## Project structure
 
@@ -281,7 +288,7 @@ QR-Scanning-System/
 │   │   ├── routes/                 # API endpoints
 │   │   ├── middlewares/            # Express middlewares
 │   │   ├── services/               # Business logic
-│   │   │   ├── grok.js             # AI integration
+│   │   │   ├── groq.js             # AI integration
 │   │   │   ├── telegram.js         # Notifications
 │   │   │   └── uploads.js          # File handling
 │   │   ├── socket/                 # Socket.IO real-time
@@ -304,7 +311,7 @@ The project is prepared for deployment as a full-stack application with:
 - PostgreSQL support via `DATABASE_URL` environment variable
 - SQLite for local development
 - Cloudinary image uploads for cloud storage
-- Grok AI integration for advanced features
+- Groq AI integration for advanced features
 - HTTPS redirects in Express for production
 - Rate limiting and security middleware
 
@@ -315,7 +322,7 @@ Recommended production setup:
 - Configure environment variables in your deployment platform
 - Set `DATABASE_URL` to a managed PostgreSQL instance
 - Set Cloudinary credentials for asset uploads
-- Set `GROK_API_KEY` for AI features
+- Set `GROQ_API_KEY` for AI features
 - Set `PUBLIC_BASE_URL` for QR code generation
 - Enable CORS and security headers as needed
 
@@ -351,7 +358,7 @@ Potential future improvements:
 - **SQLite** — local development database
 - **PostgreSQL** — production database
 - **Multer** — file uploads
-- **Grok AI API** — AI features (translation, content generation)
+- **Groq AI API** — AI features (translation, content generation)
 - **Telegram Bot API** — notifications
 - **Cloudinary** — cloud image storage
 
@@ -365,8 +372,10 @@ Potential future improvements:
 
 - Open `/order?table=101` to test the customer flow quickly.
 - Use `/kitchen` and `/waiter` with the staff PIN.
+- From `/kitchen` or `/waiter`, use **Call Manager** to create an escalation.
 - The default PIN is `1234` unless you change it in `.env`.
 - Admin search makes menu management faster when the catalog grows.
+- Open `/admin` and use the **Manager Calls** tab to resolve escalations.
 
 ## Development tips
 
@@ -379,7 +388,6 @@ cd client
 npm run dev      # Start Vite dev server
 npm run build    # Build for production
 npm run preview  # Preview production build
-npm run lint     # Run ESLint
 ```
 
 **Server:**
@@ -388,7 +396,6 @@ npm run lint     # Run ESLint
 cd server
 npm run dev      # Start with nodemon watch
 npm start        # Start production server
-npm run seed     # Seed database with demo data
 ```
 
 ### Database operations
@@ -397,7 +404,8 @@ npm run seed     # Seed database with demo data
 
 ```bash
 cd server
-npm run seed
+$env:SAMPLE_DATA_MODE="full"
+npm start
 ```
 
 **Reset database (development only):**
@@ -410,7 +418,8 @@ npm run seed
 1. **Customer ordering**: Navigate to `http://localhost:5173/order?table=1`
 2. **Kitchen staff**: Go to `http://localhost:5173/kitchen` → PIN: `1234`
 3. **Waiter service**: Go to `http://localhost:5173/waiter` → PIN: `1234`
-4. **Admin panel**: Go to `http://localhost:5173/admin` → PIN: `1234`
+4. **Manager calls**: Use Call Manager from kitchen/waiter, then open `/admin` → Manager Calls
+5. **Admin panel**: Go to `http://localhost:5173/admin` → PIN: `1234`
 
 ### Language support
 

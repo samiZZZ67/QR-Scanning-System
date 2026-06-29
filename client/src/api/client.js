@@ -60,3 +60,33 @@ export async function api(path, options = {}) {
   }
   return payload;
 }
+
+function withQuery(path, params = {}) {
+  const entries = Object.entries(params).filter(
+    ([, value]) => value !== undefined && value !== null && value !== ''
+  );
+  if (!entries.length) return path;
+  const separator = path.includes('?') ? '&' : '?';
+  return `${path}${separator}${new URLSearchParams(entries).toString()}`;
+}
+
+function wrapData(request) {
+  return request.then((data) => ({ data }));
+}
+
+const client = {
+  get(path, options = {}) {
+    return wrapData(api(withQuery(path, options.params)));
+  },
+  post(path, body, options = {}) {
+    return wrapData(api(path, { ...options, method: 'POST', body }));
+  },
+  patch(path, body, options = {}) {
+    return wrapData(api(path, { ...options, method: 'PATCH', body }));
+  },
+  delete(path, options = {}) {
+    return wrapData(api(path, { ...options, method: 'DELETE' }));
+  }
+};
+
+export default client;

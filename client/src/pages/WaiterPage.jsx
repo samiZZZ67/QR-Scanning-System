@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bell, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Bell, CheckCircle2, RefreshCw, Phone, FileText } from 'lucide-react';
 import { useOrders } from '../hooks/useOrders.js';
 import { useRealtime } from '../hooks/useRealtime.js';
 import { updateOrderStatus } from '../api/orders.js';
-import { listServiceNotifications, resolveServiceNotification } from '../api/feedback.js';
+import { listServiceNotifications, resolveServiceNotification } from '../api/notifications.js';
 import Button from '../components/ui/Button.jsx';
 import LoadingSpinner from '../components/ui/LoadingSpinner.jsx';
 import Notice from '../components/ui/Notice.jsx';
+import CallManagerButton from '../components/staff/CallManagerButton.jsx';
 import { formatTime, STATUS_COLORS } from '../utils/formatting.js';
 
 function itemName(item) {
@@ -69,11 +70,14 @@ export default function WaiterPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="font-display text-2xl font-bold text-rough">Waiter Panel</h1>
-        <Button variant="ghost" size="sm" icon={<RefreshCw size={15} />} onClick={refresh}>
-          Refresh
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <CallManagerButton staffRole="Waiter" onNotice={setNotice} />
+          <Button variant="ghost" size="sm" icon={<RefreshCw size={15} />} onClick={refresh}>
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {notice && <Notice type={notice.type} message={notice.message} onDismiss={() => setNotice(null)} />}
@@ -85,20 +89,34 @@ export default function WaiterPage() {
             <Bell size={16} className="text-gold" aria-hidden="true" />
             Service Requests ({notifications.length})
           </h2>
-          {notifications.map((notification) => (
-            <div
-              key={notification.id}
-              className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center justify-between gap-4"
-            >
-              <div>
-                <p className="font-medium text-amber-900 text-sm">Table {notification.tableNumber}</p>
-                <p className="text-xs text-amber-700">{notification.type || 'Assistance requested'}</p>
+          {notifications.map((notification) => {
+            const isWaiterCall = notification.type === 'call-waiter';
+            const icon = isWaiterCall ? Phone : FileText;
+            const label = isWaiterCall ? 'Waiter Called' : 'Bill Requested';
+            return (
+              <div
+                key={notification.id}
+                className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center justify-between gap-4"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-amber-100 rounded">
+                    {icon === Phone ? (
+                      <Phone size={16} className="text-amber-900" />
+                    ) : (
+                      <FileText size={16} className="text-amber-900" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-medium text-amber-900 text-sm">Table {notification.tableNumber}</p>
+                    <p className="text-xs text-amber-700">{label}</p>
+                  </div>
+                </div>
+                <Button size="sm" variant="ghost" onClick={() => resolveNotification(notification.id)}>
+                  Resolve
+                </Button>
               </div>
-              <Button size="sm" variant="ghost" onClick={() => resolveNotification(notification.id)}>
-                Resolve
-              </Button>
-            </div>
-          ))}
+            );
+          })}
         </section>
       )}
 

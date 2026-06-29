@@ -7,7 +7,7 @@ export default function StaffLayout({ children, title }) {
   return (
     <div className="min-h-screen bg-pale flex flex-col">
       <header className="sticky top-0 z-40 bg-rough text-pale-light px-5 py-3 flex items-center justify-between shadow-lifted">
-        <div className="fix items-center gap-3">
+        <div className="flex items-center gap-3">
           <Building2 size={22} className="text-gold" aria-hidden="true" />
           <div>
             <p className="font-display text-pale-light text-base font-semibold leading-tight">

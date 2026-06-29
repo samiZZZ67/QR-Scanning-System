@@ -1,0 +1,19 @@
+file:///C:/Users/yosee/Documents/qr/QR-Scanning-System/server/src/db/sqlite.js:408
+    db.prepare('UPDATE tables SET internal_id = ? WHERE rowid = ?').run(
+                                                                    ^
+
+TypeError: Provided value cannot be bound to SQLite parameter 2.
+    at file:///C:/Users/yosee/Documents/qr/QR-Scanning-System/server/src/db/sqlite.js:408:69
+    at Array.forEach (<anonymous>)
+    at migrate (file:///C:/Users/yosee/Documents/qr/QR-Scanning-System/server/src/db/sqlite.js:407:95)
+    at createDatabase (file:///C:/Users/yosee/Documents/qr/QR-Scanning-System/server/src/db/sqlite.js:1604:3)
+    at createRepository (file:///C:/Users/yosee/Documents/qr/QR-Scanning-System/server/src/db/repository.js:9:10)
+    at file:///C:/Users/yosee/Documents/qr/QR-Scanning-System/server/server.js:10:26
+    at ModuleJob.run (node:internal/modules/esm/module_job:439:25)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async node:internal/modules/esm/loader:643:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+  code: 'ERR_INVALID_ARG_TYPE'
+}
+
+Node.js v24.18.0

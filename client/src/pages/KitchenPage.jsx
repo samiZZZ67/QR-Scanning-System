@@ -1,14 +1,15 @@
 import { useCallback, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChefHat, RefreshCw } from 'lucide-react';
+import { ChefHat, RefreshCw, Phone } from 'lucide-react';
 import { useOrders } from '../hooks/useOrders.js';
 import { useRealtime } from '../hooks/useRealtime.js';
 import { updateOrderStatus } from '../api/orders.js';
+import { createServiceNotification } from '../api/notifications.js';
 import Button from '../components/ui/Button.jsx';
 import LoadingSpinner from '../components/ui/LoadingSpinner.jsx';
 import Notice from '../components/ui/Notice.jsx';
+import CallManagerButton from '../components/staff/CallManagerButton.jsx';
 import { formatTime, STATUS_COLORS } from '../utils/formatting.js';
-
 const ACTIVE_STATUSES = ['received', 'preparing'];
 const nextStatus = { received: 'preparing', preparing: 'ready' };
 const nextLabel = { received: 'Start Preparing', preparing: 'Mark Ready' };
@@ -58,13 +59,42 @@ export default function KitchenPage() {
     }
   }
 
+  async function handleCallWaiter() {
+    setUpdating('call-waiter');
+    try {
+      await createServiceNotification({
+        type: 'call-waiter',
+        tableNumber: 0,
+        locationType: 'kitchen',
+        reason: 'Food is ready for pickup'
+      });
+      setNotice({ type: 'success', message: 'Wait staff notified!' });
+    } catch (err) {
+      setNotice({ type: 'error', message: err.message || 'Failed to call waiter.' });
+    } finally {
+      setUpdating(null);
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="font-display text-2xl font-bold text-rough">Kitchen Display</h1>
-        <Button variant="ghost" size="sm" icon={<RefreshCw size={15} />} onClick={refresh}>
-          Refresh
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            icon={<Phone size={15} />} 
+            onClick={handleCallWaiter}
+            loading={updating === 'call-waiter'}
+          >
+            Call Waiter
+          </Button>
+          <CallManagerButton staffRole="Kitchen" onNotice={setNotice} />
+          <Button variant="ghost" size="sm" icon={<RefreshCw size={15} />} onClick={refresh}>
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {notice && <Notice type={notice.type} message={notice.message} onDismiss={() => setNotice(null)} />}
@@ -103,8 +133,15 @@ export default function KitchenPage() {
 
                 <ul className="divide-y divide-gold-muted/20 text-sm">
                   {(order.items || []).map((item, index) => (
-                    <li key={index} className="py-1.5 flex justify-between gap-2">
-                      <span className="text-body">{itemName(item)}</span>
+                    <li key={index} className="py-2 flex justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <span className="text-body">{itemName(item)}</span>
+                        {item.note && (
+                          <p className="text-xs text-gold-muted italic mt-0.5">
+                            Note: {item.note}
+                          </p>
+                        )}
+                      </div>
                       <span className="font-semibold text-rough shrink-0">x{item.quantity}</span>
                     </li>
                   ))}

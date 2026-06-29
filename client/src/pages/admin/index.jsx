@@ -1,14 +1,18 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
+  BellRing,
   Bot,
+  Building2,
+  DoorOpen,
   Image,
   LayoutDashboard,
   MessageSquare,
   QrCode,
   ShoppingBag,
   Tag,
-  UtensilsCrossed
+  UtensilsCrossed,
+  Users
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import StaffLoginGate from '../../components/auth/StaffLoginGate.jsx';
@@ -18,7 +22,11 @@ import LoadingSpinner from '../../components/ui/LoadingSpinner.jsx';
 const DashboardTab = React.lazy(() => import('./dashboard/index.jsx'));
 const MenuTab = React.lazy(() => import('./menu/index.jsx'));
 const CategoriesTab = React.lazy(() => import('./categories/index.jsx'));
+const FloorsTab = React.lazy(() => import('./floors/index.jsx'));
 const TablesTab = React.lazy(() => import('./tables/index.jsx'));
+const RoomsTab = React.lazy(() => import('./rooms/index.jsx'));
+const StaffTab = React.lazy(() => import('./staff/index.jsx'));
+const ManagerTab = React.lazy(() => import('./manager/index.jsx'));
 const OrdersTab = React.lazy(() => import('./orders/index.jsx'));
 const FeedbackTab = React.lazy(() => import('./feedback/index.jsx'));
 const AssetsTab = React.lazy(() => import('./assets/index.jsx'));
@@ -28,7 +36,11 @@ const TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'menu', label: 'Menu Items', icon: UtensilsCrossed },
   { id: 'categories', label: 'Categories', icon: Tag },
+  { id: 'floors', label: 'Floors', icon: Building2 },
   { id: 'tables', label: 'Tables & QR', icon: QrCode },
+  { id: 'rooms', label: 'Rooms', icon: DoorOpen },
+  { id: 'staff', label: 'Staff Management', icon: Users },
+  { id: 'manager', label: 'Manager Calls', icon: BellRing },
   { id: 'orders', label: 'Orders', icon: ShoppingBag },
   { id: 'feedback', label: 'Feedback', icon: MessageSquare },
   { id: 'assets', label: 'Assets', icon: Image },
@@ -39,7 +51,11 @@ const TAB_COMPONENTS = {
   dashboard: DashboardTab,
   menu: MenuTab,
   categories: CategoriesTab,
+  floors: FloorsTab,
   tables: TablesTab,
+  rooms: RoomsTab,
+  staff: StaffTab,
+  manager: ManagerTab,
   orders: OrdersTab,
   feedback: FeedbackTab,
   assets: AssetsTab,

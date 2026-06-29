@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -10,7 +11,9 @@ import {
 } from '../domain/order.js';
 import {
   seedCategories,
+  seedFloors,
   seedMenuItems,
+  seedStaffMembers,
   seedTables,
   defaultAssets,
   fallbackMenuImage
@@ -34,6 +37,42 @@ function parseJson(value, fallback = {}) {
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+function makeInternalId(prefix) {
+  return `${prefix}_${randomUUID()}`;
+}
+
+function buildQrUrl(internalId, fallbackParam = {}) {
+  try {
+    const url = new URL('/order', config.publicBaseUrl);
+    if (internalId) {
+      url.searchParams.set('id', internalId);
+    } else {
+      for (const [key, value] of Object.entries(fallbackParam)) {
+        if (value !== undefined && value !== null && value !== '') {
+          url.searchParams.set(key, String(value));
+        }
+      }
+    }
+    return url.toString();
+  } catch {
+    const params = internalId
+      ? `id=${encodeURIComponent(internalId)}`
+      : new URLSearchParams(fallbackParam).toString();
+    return `/order?${params}`;
+  }
+}
+
+function numberOrNull(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function floorFromNumber(value, fallback = 1) {
+  const parsed = Number(value);
+  if (Number.isInteger(parsed) && parsed >= 100) return Math.floor(parsed / 100);
+  return Number(fallback) || 1;
 }
 
 // ─── Row mappers ──────────────────────────────────────────────────────────────
@@ -71,12 +110,74 @@ function mapMenuItem(row) {
   };
 }
 
+function mapFloor(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    number: row.number,
+    description: row.description || '',
+    active: Boolean(row.active),
+    createdAt: row.created_at
+  };
+}
+
 function mapTable(row) {
   return {
+    id: row.id || row.number,
+    internalId: row.internal_id || '',
     number: row.number,
     floor: row.floor,
+    floorId: row.floor_id || null,
+    floorName: row.floor_name || `Floor ${row.floor}`,
     seats: row.seats,
-    active: Boolean(row.active)
+    active: Boolean(row.active),
+    qrUrl: buildQrUrl(row.internal_id, { table: row.number })
+  };
+}
+
+function mapRoom(row) {
+  return {
+    id: row.id,
+    internalId: row.internal_id || '',
+    number: row.room_number,
+    roomNumber: row.room_number,
+    floor: row.floor,
+    floorId: row.floor_id || null,
+    floorName: row.floor_name || `Floor ${row.floor}`,
+    active: Boolean(row.active),
+    qrUrl: buildQrUrl(row.internal_id, { room: row.room_number })
+  };
+}
+
+function locationLabel(row) {
+  if (row.location_type === 'room') {
+    return `Room ${row.room_number || row.table_number}`;
+  }
+  return `Table ${row.table_number}`;
+}
+
+function mapStaffMember(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    role: row.role,
+    assignedFloor: row.assigned_floor,
+    online: Boolean(row.online),
+    active: Boolean(row.active),
+    createdAt: row.created_at
+  };
+}
+
+function mapManagerNotification(row) {
+  return {
+    id: row.id,
+    staffName: row.staff_name,
+    staffRole: row.staff_role,
+    assignedFloor: row.assigned_floor,
+    reason: row.reason || '',
+    status: row.status,
+    createdAt: row.created_at,
+    resolvedAt: row.resolved_at
   };
 }
 
@@ -85,7 +186,12 @@ function mapNotification(row) {
     id: row.id,
     type: row.type,
     tableNumber: row.table_number,
+    roomNumber: row.room_number || '',
+    locationType: row.location_type || 'table',
+    locationId: row.location_id || '',
+    locationLabel: locationLabel(row),
     floor: row.floor,
+    note: row.reason || '',
     status: row.status,
     createdAt: row.created_at,
     resolvedAt: row.resolved_at
@@ -135,9 +241,29 @@ function mapAsset(row) {
 function migrate(db) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS tables (
-      number INTEGER PRIMARY KEY,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      number INTEGER NOT NULL UNIQUE,
       floor INTEGER NOT NULL,
+      internal_id TEXT NOT NULL DEFAULT '',
       seats INTEGER NOT NULL DEFAULT 4,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS floors (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      number INTEGER NOT NULL UNIQUE,
+      description TEXT NOT NULL DEFAULT '',
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS rooms (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      room_number INTEGER NOT NULL UNIQUE,
+      floor INTEGER NOT NULL,
+      internal_id TEXT NOT NULL UNIQUE,
       active INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
@@ -174,6 +300,9 @@ function migrate(db) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       table_number INTEGER NOT NULL,
       floor INTEGER NOT NULL,
+      location_type TEXT NOT NULL DEFAULT 'table' CHECK(location_type IN ('table', 'room')),
+      location_id TEXT NOT NULL DEFAULT '',
+      room_number TEXT NOT NULL DEFAULT '',
       status TEXT NOT NULL DEFAULT 'received',
       notes TEXT NOT NULL DEFAULT '',
       total INTEGER NOT NULL,
@@ -211,6 +340,7 @@ function migrate(db) {
       name_json TEXT NOT NULL,
       unit_price INTEGER NOT NULL,
       quantity INTEGER NOT NULL,
+      note TEXT NOT NULL DEFAULT '',
       line_total INTEGER NOT NULL
     );
 
@@ -219,6 +349,31 @@ function migrate(db) {
       type TEXT NOT NULL CHECK(type IN ('call-waiter', 'request-bill')),
       table_number INTEGER NOT NULL,
       floor INTEGER NOT NULL,
+      location_type TEXT NOT NULL DEFAULT 'table' CHECK(location_type IN ('table', 'room', 'kitchen')),
+      location_id TEXT NOT NULL DEFAULT '',
+      room_number TEXT NOT NULL DEFAULT '',
+      reason TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open', 'resolved')),
+      created_at TEXT NOT NULL,
+      resolved_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS staff_members (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      role TEXT NOT NULL,
+      assigned_floor INTEGER,
+      online INTEGER NOT NULL DEFAULT 0,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS manager_notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      staff_name TEXT NOT NULL,
+      staff_role TEXT NOT NULL,
+      assigned_floor INTEGER,
+      reason TEXT NOT NULL DEFAULT '',
       status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open', 'resolved')),
       created_at TEXT NOT NULL,
       resolved_at TEXT
@@ -239,6 +394,41 @@ function migrate(db) {
   ensureColumn(db, 'categories', 'image_thumbnail TEXT NOT NULL DEFAULT \'\'');
   ensureColumn(db, 'menu_items', 'image_public_id TEXT NOT NULL DEFAULT \'\'');
   ensureColumn(db, 'menu_items', 'image_thumbnail TEXT NOT NULL DEFAULT \'\'');
+  ensureColumn(db, 'tables', 'internal_id TEXT NOT NULL DEFAULT \'\'');
+  ensureColumn(db, 'orders', 'location_type TEXT NOT NULL DEFAULT \'table\'');
+  ensureColumn(db, 'orders', 'location_id TEXT NOT NULL DEFAULT \'\'');
+  ensureColumn(db, 'orders', 'room_number TEXT NOT NULL DEFAULT \'\'');
+  ensureColumn(db, 'order_items', 'note TEXT NOT NULL DEFAULT \'\'');
+  ensureColumn(db, 'service_notifications', 'location_type TEXT NOT NULL DEFAULT \'table\'');
+  ensureColumn(db, 'service_notifications', 'location_id TEXT NOT NULL DEFAULT \'\'');
+  ensureColumn(db, 'service_notifications', 'room_number TEXT NOT NULL DEFAULT \'\'');
+  ensureColumn(db, 'service_notifications', 'reason TEXT NOT NULL DEFAULT \'\'');
+
+  db.prepare('SELECT rowid AS rowid FROM tables WHERE internal_id = ? OR internal_id IS NULL').all('').forEach((row) => {
+    db.prepare('UPDATE tables SET internal_id = ? WHERE rowid = ?').run(
+      makeInternalId('table'),
+      row.rowid
+    );
+  });
+
+  db.exec(`
+    INSERT INTO floors (name, number, description, active)
+    SELECT 'Floor ' || floor, floor, '', 1
+    FROM (SELECT DISTINCT floor FROM tables WHERE floor IS NOT NULL)
+    WHERE floor NOT IN (SELECT number FROM floors);
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_tables_internal_id
+      ON tables(internal_id)
+      WHERE internal_id <> '';
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_rooms_internal_id
+      ON rooms(internal_id);
+    CREATE INDEX IF NOT EXISTS idx_orders_location
+      ON orders(location_type, location_id);
+    CREATE INDEX IF NOT EXISTS idx_notifications_location
+      ON service_notifications(location_type, location_id);
+    CREATE INDEX IF NOT EXISTS idx_manager_notifications_status
+      ON manager_notifications(status, created_at DESC);
+  `);
 }
 
 function ensureColumn(db, table, definition) {
@@ -255,13 +445,38 @@ function ensureColumn(db, table, definition) {
 // ─── Seed ─────────────────────────────────────────────────────────────────────
 
 function seed(db) {
+  const floorCount = db.prepare('SELECT COUNT(*) AS count FROM floors').get().count;
+  if (!floorCount) {
+    const insert = db.prepare(
+      'INSERT INTO floors (name, number, description, active) VALUES (?, ?, ?, 1)'
+    );
+    for (const floor of seedFloors()) {
+      insert.run(floor.name, floor.number, floor.description || '');
+    }
+  }
+
   const tableCount = db.prepare('SELECT COUNT(*) AS count FROM tables').get().count;
   if (!tableCount) {
     const insert = db.prepare(
-      'INSERT INTO tables (number, floor, seats, active) VALUES (?, ?, ?, 1)'
+      'INSERT INTO tables (number, floor, internal_id, seats, active) VALUES (?, ?, ?, ?, 1)'
     );
     for (const t of seedTables()) {
-      insert.run(t.number, t.floor, t.seats);
+      insert.run(t.number, t.floor, makeInternalId('table'), t.seats);
+    }
+  }
+
+  const staffCount = db.prepare('SELECT COUNT(*) AS count FROM staff_members').get().count;
+  if (!staffCount) {
+    const insert = db.prepare(
+      'INSERT INTO staff_members (name, role, assigned_floor, online, active) VALUES (?, ?, ?, ?, 1)'
+    );
+    for (const staff of seedStaffMembers()) {
+      insert.run(
+        staff.name,
+        staff.role,
+        staff.assignedFloor ?? null,
+        bool(staff.online)
+      );
     }
   }
 
@@ -448,12 +663,17 @@ function buildRepository(db) {
         name: parseJson(item.name_json),
         unitPrice: item.unit_price,
         quantity: item.quantity,
+        note: item.note || '',
         lineTotal: item.line_total
       }));
 
     return {
       id: row.id,
       tableNumber: row.table_number,
+      roomNumber: row.room_number || '',
+      locationType: row.location_type || 'table',
+      locationId: row.location_id || '',
+      locationLabel: locationLabel(row),
       floor: row.floor,
       status: row.status,
       notes: row.notes,
@@ -468,12 +688,178 @@ function buildRepository(db) {
     };
   }
 
+  function resolveLocation(input = {}) {
+    const internalId = requireText(input.locationId ?? input.id, '');
+    if (internalId) {
+      const table = db
+        .prepare('SELECT * FROM tables WHERE internal_id = ? AND active = 1')
+        .get(internalId);
+      if (table) {
+        return {
+          type: 'table',
+          tableNumber: table.number,
+          roomNumber: '',
+          floor: table.floor,
+          internalId: table.internal_id,
+          label: `Table ${table.number}`
+        };
+      }
+
+      const room = db
+        .prepare('SELECT * FROM rooms WHERE internal_id = ? AND active = 1')
+        .get(internalId);
+      if (room) {
+        return {
+          type: 'room',
+          tableNumber: room.room_number,
+          roomNumber: String(room.room_number),
+          floor: room.floor,
+          internalId: room.internal_id,
+          label: `Room ${room.room_number}`
+        };
+      }
+      throw new Error('QR location was not found');
+    }
+
+    const roomInput = input.roomNumber ?? input.room;
+    if (roomInput !== undefined && roomInput !== null && roomInput !== '') {
+      const roomNumber = Number(roomInput);
+      const room = db
+        .prepare('SELECT * FROM rooms WHERE room_number = ? AND active = 1')
+        .get(roomNumber);
+      if (room) {
+        return {
+          type: 'room',
+          tableNumber: room.room_number,
+          roomNumber: String(room.room_number),
+          floor: room.floor,
+          internalId: room.internal_id,
+          label: `Room ${room.room_number}`
+        };
+      }
+      return {
+        type: 'room',
+        tableNumber: roomNumber,
+        roomNumber: String(roomNumber),
+        floor: floorFromNumber(roomNumber, input.floor),
+        internalId: '',
+        label: `Room ${roomNumber}`
+      };
+    }
+
+    const tableNumber = Number(input.tableNumber ?? input.table);
+    if (!Number.isInteger(tableNumber) || tableNumber < 1) {
+      throw new Error('Valid table, room, or QR location is required');
+    }
+    const table = db
+      .prepare('SELECT * FROM tables WHERE number = ? AND active = 1')
+      .get(tableNumber);
+    if (table) {
+      return {
+        type: 'table',
+        tableNumber: table.number,
+        roomNumber: '',
+        floor: table.floor,
+        internalId: table.internal_id,
+        label: `Table ${table.number}`
+      };
+    }
+    return {
+      type: 'table',
+      tableNumber,
+      roomNumber: '',
+      floor: floorFromNumber(tableNumber, input.floor),
+      internalId: '',
+      label: `Table ${tableNumber}`
+    };
+  }
+
   return {
     raw: db,
 
+    listFloors(includeInactive = false) {
+      const where = includeInactive ? '' : 'WHERE active = 1';
+      return db
+        .prepare(`SELECT * FROM floors ${where} ORDER BY number, id`)
+        .all()
+        .map(mapFloor);
+    },
+
+    createFloor(input) {
+      const number = Number(input.number);
+      if (!Number.isInteger(number) || number < 1) {
+        throw new Error('Floor number must be a positive number');
+      }
+      const info = db
+        .prepare(
+          `INSERT INTO floors (name, number, description, active, created_at)
+           VALUES (?, ?, ?, 1, ?)`
+        )
+        .run(
+          requireText(input.name, `Floor ${number}`),
+          number,
+          requireText(input.description, ''),
+          nowIso()
+        );
+      return this.listFloors(true).find((floor) => floor.id === info.lastInsertRowid);
+    },
+
+    updateFloor(id, input) {
+      const current = db.prepare('SELECT * FROM floors WHERE id = ?').get(Number(id));
+      if (!current) return null;
+      const nextNumber = Number(input.number ?? current.number);
+      if (!Number.isInteger(nextNumber) || nextNumber < 1) {
+        throw new Error('Floor number must be a positive number');
+      }
+
+      db.exec('BEGIN');
+      try {
+        db.prepare(
+          `UPDATE floors
+           SET name = ?, number = ?, description = ?, active = ?
+           WHERE id = ?`
+        ).run(
+          requireText(input.name, current.name),
+          nextNumber,
+          requireText(input.description, current.description),
+          input.active === undefined ? current.active : bool(input.active),
+          Number(id)
+        );
+        if (nextNumber !== current.number) {
+          db.prepare('UPDATE tables SET floor = ? WHERE floor = ?').run(nextNumber, current.number);
+          db.prepare('UPDATE rooms SET floor = ? WHERE floor = ?').run(nextNumber, current.number);
+        }
+        db.exec('COMMIT');
+      } catch (err) {
+        db.exec('ROLLBACK');
+        throw err;
+      }
+      return this.listFloors(true).find((floor) => floor.id === Number(id));
+    },
+
+    deleteFloor(id) {
+      const floor = db.prepare('SELECT * FROM floors WHERE id = ?').get(Number(id));
+      if (!floor) return 0;
+      const tableCount = db
+        .prepare('SELECT COUNT(*) AS count FROM tables WHERE floor = ?')
+        .get(floor.number).count;
+      const roomCount = db
+        .prepare('SELECT COUNT(*) AS count FROM rooms WHERE floor = ?')
+        .get(floor.number).count;
+      if (tableCount || roomCount) {
+        throw new Error('Move or delete tables and rooms before deleting this floor');
+      }
+      return db.prepare('DELETE FROM floors WHERE id = ?').run(Number(id)).changes;
+    },
+
     listTables() {
       return db
-        .prepare('SELECT * FROM tables ORDER BY floor, number')
+        .prepare(
+          `SELECT tables.*, floors.id AS floor_id, floors.name AS floor_name
+           FROM tables
+           LEFT JOIN floors ON floors.number = tables.floor
+           ORDER BY tables.floor, tables.number`
+        )
         .all()
         .map(mapTable);
     },
@@ -481,15 +867,111 @@ function buildRepository(db) {
     addTable(input) {
       const number = Number(input.number);
       const seats = Number(input.seats || 4);
-      const floor = deriveFloor(number);
+      const floor = Number(input.floor ?? input.floorNumber ?? floorFromNumber(number));
+      if (!Number.isInteger(number) || number < 1) {
+        throw new Error('Table number must be a positive number');
+      }
+      if (!Number.isInteger(floor) || floor < 1) {
+        throw new Error('Table floor is required');
+      }
+      const floorExists = db.prepare('SELECT id FROM floors WHERE number = ?').get(floor);
+      if (!floorExists) {
+        throw new Error('Please create the floor before adding tables to it');
+      }
       db.prepare(
-        'INSERT INTO tables (number, floor, seats, active) VALUES (?, ?, ?, 1)'
-      ).run(number, floor, seats);
+        'INSERT INTO tables (number, floor, internal_id, seats, active) VALUES (?, ?, ?, ?, 1)'
+      ).run(number, floor, makeInternalId('table'), seats);
       return this.listTables().find((t) => t.number === number);
+    },
+
+    updateTable(number, input) {
+      const current = db.prepare('SELECT * FROM tables WHERE number = ?').get(Number(number));
+      if (!current) return null;
+      const nextNumber = Number(input.number ?? current.number);
+      const floor = Number(input.floor ?? input.floorNumber ?? current.floor);
+      if (!Number.isInteger(nextNumber) || nextNumber < 1) {
+        throw new Error('Table number must be a positive number');
+      }
+      if (!db.prepare('SELECT id FROM floors WHERE number = ?').get(floor)) {
+        throw new Error('Please create the floor before assigning tables to it');
+      }
+      db.prepare(
+        `UPDATE tables
+         SET number = ?, floor = ?, seats = ?, active = ?
+         WHERE number = ?`
+      ).run(
+        nextNumber,
+        floor,
+        Number(input.seats ?? current.seats),
+        input.active === undefined ? current.active : bool(input.active),
+        Number(number)
+      );
+      return this.listTables().find((t) => t.number === nextNumber);
     },
 
     deleteTable(number) {
       return db.prepare('DELETE FROM tables WHERE number = ?').run(Number(number)).changes;
+    },
+
+    listRooms() {
+      return db
+        .prepare(
+          `SELECT rooms.*, floors.id AS floor_id, floors.name AS floor_name
+           FROM rooms
+           LEFT JOIN floors ON floors.number = rooms.floor
+           ORDER BY rooms.floor, rooms.room_number`
+        )
+        .all()
+        .map(mapRoom);
+    },
+
+    addRoom(input) {
+      const roomNumber = Number(input.roomNumber ?? input.number);
+      const floor = Number(input.floor ?? input.floorNumber);
+      if (!Number.isInteger(roomNumber) || roomNumber < 1) {
+        throw new Error('Room number must be a positive number');
+      }
+      if (!Number.isInteger(floor) || floor < 1) {
+        throw new Error('Room floor is required');
+      }
+      if (!db.prepare('SELECT id FROM floors WHERE number = ?').get(floor)) {
+        throw new Error('Please create the floor before adding rooms to it');
+      }
+      const info = db
+        .prepare(
+          `INSERT INTO rooms (room_number, floor, internal_id, active, created_at)
+           VALUES (?, ?, ?, 1, ?)`
+        )
+        .run(roomNumber, floor, makeInternalId('room'), nowIso());
+      return this.listRooms().find((room) => room.id === info.lastInsertRowid);
+    },
+
+    updateRoom(id, input) {
+      const current = db.prepare('SELECT * FROM rooms WHERE id = ?').get(Number(id));
+      if (!current) return null;
+      const roomNumber = Number(input.roomNumber ?? input.number ?? current.room_number);
+      const floor = Number(input.floor ?? input.floorNumber ?? current.floor);
+      if (!Number.isInteger(roomNumber) || roomNumber < 1) {
+        throw new Error('Room number must be a positive number');
+      }
+      if (!db.prepare('SELECT id FROM floors WHERE number = ?').get(floor)) {
+        throw new Error('Please create the floor before assigning rooms to it');
+      }
+      db.prepare(
+        `UPDATE rooms
+         SET room_number = ?, floor = ?, active = ?
+         WHERE id = ?`
+      ).run(
+        roomNumber,
+        floor,
+        input.active === undefined ? current.active : bool(input.active),
+        Number(id)
+      );
+      return this.listRooms().find((room) => room.id === Number(id));
+    },
+
+    deleteRoom(id) {
+      return db.prepare('DELETE FROM rooms WHERE id = ?').run(Number(id)).changes;
     },
 
     listCategories(includeInactive = false) {
@@ -655,11 +1137,7 @@ function buildRepository(db) {
         if (existing) return hydrateOrder(existing);
       }
 
-      const tableNumber = Number(input.tableNumber ?? input.table);
-      const table = db
-        .prepare('SELECT * FROM tables WHERE number = ? AND active = 1')
-        .get(tableNumber);
-      const floor = table ? table.floor : deriveFloor(tableNumber);
+      const location = resolveLocation(input);
 
       const requestedItems = Array.isArray(input.items) ? input.items : [];
       if (!requestedItems.length) {
@@ -679,6 +1157,7 @@ function buildRepository(db) {
           name: parseJson(item.name_json),
           unitPrice: item.price,
           quantity,
+          note: requireText(requested.note, ''),
           lineTotal: item.price * quantity
         };
       });
@@ -693,12 +1172,16 @@ function buildRepository(db) {
         const orderInfo = db
           .prepare(
             `INSERT INTO orders
-               (table_number, floor, status, notes, total, idempotency_key, created_at, updated_at)
-             VALUES (?, ?, 'received', ?, ?, ?, ?, ?)`
+               (table_number, floor, location_type, location_id, room_number, status, notes,
+                total, idempotency_key, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, 'received', ?, ?, ?, ?, ?)`
           )
           .run(
-            tableNumber,
-            floor,
+            location.tableNumber,
+            location.floor,
+            location.type,
+            location.internalId,
+            location.roomNumber,
             requireText(input.notes, ''),
             total,
             idempotencyKey || null,
@@ -708,8 +1191,8 @@ function buildRepository(db) {
 
         const insertItem = db.prepare(
           `INSERT INTO order_items
-             (order_id, menu_item_id, name_json, unit_price, quantity, line_total)
-           VALUES (?, ?, ?, ?, ?, ?)`
+             (order_id, menu_item_id, name_json, unit_price, quantity, note, line_total)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`
         );
         for (const s of snapshots) {
           insertItem.run(
@@ -718,6 +1201,7 @@ function buildRepository(db) {
             json(s.name),
             s.unitPrice,
             s.quantity,
+            s.note,
             s.lineTotal
           );
         }
@@ -783,6 +1267,17 @@ function buildRepository(db) {
       }
       db.prepare('UPDATE orders SET status = ?, updated_at = ? WHERE id = ?').run(
         status,
+        nowIso(),
+        Number(id)
+      );
+      return getOrder(id);
+    },
+
+    updateOrderNotes(id, notes) {
+      const current = db.prepare('SELECT * FROM orders WHERE id = ?').get(Number(id));
+      if (!current) return null;
+      db.prepare('UPDATE orders SET notes = ?, updated_at = ? WHERE id = ?').run(
+        notes || '',
         nowIso(),
         Number(id)
       );
@@ -860,16 +1355,24 @@ function buildRepository(db) {
     },
 
     createServiceNotification(input) {
-      const tableNumber = Number(input.tableNumber ?? input.table);
+      const location = resolveLocation(input);
       const type = input.type === 'request-bill' ? 'request-bill' : 'call-waiter';
-      const floor = deriveFloor(tableNumber);
       const info = db
         .prepare(
           `INSERT INTO service_notifications
-             (type, table_number, floor, status, created_at)
-           VALUES (?, ?, ?, 'open', ?)`
+             (type, table_number, floor, location_type, location_id, room_number, reason, status, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 'open', ?)`
         )
-        .run(type, tableNumber, floor, nowIso());
+        .run(
+          type,
+          location.tableNumber,
+          location.floor,
+          location.type,
+          location.internalId,
+          location.roomNumber,
+          requireText(input.note ?? input.reason, ''),
+          nowIso()
+        );
       return db
         .prepare('SELECT * FROM service_notifications WHERE id = ?')
         .get(info.lastInsertRowid);
@@ -904,6 +1407,73 @@ function buildRepository(db) {
       ).run(nowIso(), Number(id));
       return mapNotification(
         db.prepare('SELECT * FROM service_notifications WHERE id = ?').get(Number(id))
+      );
+    },
+
+    listStaffMembers() {
+      return db
+        .prepare(
+          `SELECT * FROM staff_members
+           WHERE active = 1
+           ORDER BY
+             CASE WHEN role = 'Kitchen' THEN 999 ELSE COALESCE(assigned_floor, 998) END,
+             role,
+             name`
+        )
+        .all()
+        .map(mapStaffMember);
+    },
+
+    createManagerNotification(input) {
+      const staffName = requireText(input.staffName ?? input.name, '');
+      const staffRole = requireText(input.staffRole ?? input.role, 'Staff');
+      if (!staffName) {
+        throw new Error('Staff name is required');
+      }
+      const assignedFloor = numberOrNull(input.assignedFloor ?? input.floor);
+      const info = db
+        .prepare(
+          `INSERT INTO manager_notifications
+             (staff_name, staff_role, assigned_floor, reason, status, created_at)
+           VALUES (?, ?, ?, ?, 'open', ?)`
+        )
+        .run(
+          staffName,
+          staffRole,
+          assignedFloor,
+          requireText(input.reason, ''),
+          nowIso()
+        );
+      return mapManagerNotification(
+        db.prepare('SELECT * FROM manager_notifications WHERE id = ?').get(info.lastInsertRowid)
+      );
+    },
+
+    listManagerNotifications(filters = {}) {
+      const where = [];
+      const params = [];
+      if (filters.status) {
+        where.push('status = ?');
+        params.push(filters.status);
+      }
+      const sql = `
+        SELECT * FROM manager_notifications
+        ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+        ORDER BY created_at DESC, id DESC
+      `;
+      return db.prepare(sql).all(...params).map(mapManagerNotification);
+    },
+
+    resolveManagerNotification(id) {
+      const row = db
+        .prepare('SELECT * FROM manager_notifications WHERE id = ?')
+        .get(Number(id));
+      if (!row) return null;
+      db.prepare(
+        "UPDATE manager_notifications SET status = 'resolved', resolved_at = ? WHERE id = ?"
+      ).run(nowIso(), Number(id));
+      return mapManagerNotification(
+        db.prepare('SELECT * FROM manager_notifications WHERE id = ?').get(Number(id))
       );
     },
 
@@ -966,6 +1536,66 @@ function buildRepository(db) {
       );
       return mapAsset(
         db.prepare('SELECT * FROM app_assets WHERE key = ?').get(String(key))
+      );
+    },
+
+    createStaffMember(input) {
+      const name = requireText(input.name, '');
+      const role = requireText(input.role, 'Staff');
+      if (!name) throw new Error('Staff name is required');
+      const info = db
+        .prepare(
+          `INSERT INTO staff_members (name, role, assigned_floor, online, active)
+           VALUES (?, ?, ?, ?, 1)`
+        )
+        .run(name, role, numberOrNull(input.assignedFloor), bool(input.online ?? false));
+      return mapStaffMember(
+        db.prepare('SELECT * FROM staff_members WHERE id = ?').get(info.lastInsertRowid)
+      );
+    },
+
+    updateStaffMember(id, input) {
+      const current = db
+        .prepare('SELECT * FROM staff_members WHERE id = ?')
+        .get(Number(id));
+      if (!current) return null;
+      db.prepare(
+        `UPDATE staff_members
+         SET name = ?, role = ?, assigned_floor = ?, online = ?
+         WHERE id = ?`
+      ).run(
+        requireText(input.name, current.name),
+        requireText(input.role, current.role),
+        numberOrNull(input.assignedFloor ?? current.assigned_floor),
+        input.online !== undefined ? bool(input.online) : current.online,
+        Number(id)
+      );
+      return mapStaffMember(
+        db.prepare('SELECT * FROM staff_members WHERE id = ?').get(Number(id))
+      );
+    },
+
+    deleteStaffMember(id) {
+      const row = db
+        .prepare('SELECT id FROM staff_members WHERE id = ?')
+        .get(Number(id));
+      if (!row) return 0;
+      return db
+        .prepare('UPDATE staff_members SET active = 0 WHERE id = ?')
+        .run(Number(id)).changes;
+    },
+
+    setStaffOnline(id, online) {
+      const row = db
+        .prepare('SELECT id FROM staff_members WHERE id = ?')
+        .get(Number(id));
+      if (!row) return null;
+      db.prepare('UPDATE staff_members SET online = ? WHERE id = ?').run(
+        bool(online),
+        Number(id)
+      );
+      return mapStaffMember(
+        db.prepare('SELECT * FROM staff_members WHERE id = ?').get(Number(id))
       );
     }
   };

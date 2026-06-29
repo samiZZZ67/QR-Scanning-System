@@ -43,10 +43,10 @@ const config = Object.freeze({
     chatId: process.env.TELEGRAM_CHAT_ID || ''
   }),
 
-  grok: Object.freeze({
-    apiKey: process.env.GROK_API_KEY || process.env.XAI_API_KEY || '',
-    textModel: process.env.GROK_MODEL || 'grok-4-latest',
-    imageModel: process.env.GROK_IMAGE_MODEL || 'grok-2-image-latest'
+  groq: Object.freeze({
+    apiKey: process.env.GROQ_API_KEY || process.env.XAI_API_KEY || '',
+    textModel: process.env.GROQ_MODEL || 'groq-4-latest',
+    imageModel: process.env.GROQ_IMAGE_MODEL || 'groq-2-image-latest'
   }),
 
   jsonLimit: process.env.JSON_LIMIT || '15mb',

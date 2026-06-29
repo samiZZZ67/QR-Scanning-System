@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-export function AdminSidebar({ activeTab, onTabChange, tabs = [] }) {
+export function AdminSidebar({ activeTab, onTabChange, tabs = [], unreadCount = 0 }) {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -74,14 +74,22 @@ export function AdminSidebar({ activeTab, onTabChange, tabs = [] }) {
                   className="absolute left-0 top-1 bottom-1 w-1 bg-gold-hover rounded-r-full"
                 />
               )}
-              {Icon && (
-                <Icon
-                  size={18}
-                  strokeWidth={isActive ? 2 : 1.5}
-                  className={isActive ? "text-gold-hover" : "text-pale/50"}
-                  aria-hidden="true"
-                />
-              )}
+              <div className="relative">
+                {Icon && (
+                  <Icon
+                    size={18}
+                    strokeWidth={isActive ? 2 : 1.5}
+                    className={isActive ? "text-gold-hover" : "text-pale/50"}
+                    aria-hidden="true"
+                  />
+                )}
+                {/* Badge for manager calls */}
+                {tab.id === 'manager' && unreadCount > 0 && (
+                  <span className="absolute -top-1.5 -right-2 min-w-[16px] h-[16px] flex items-center justify-center bg-red-500 text-white text-[9px] font-bold rounded-full px-1 shadow">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </div>
               <AnimatePresence>
                 {!collapsed && (
                   <motion.span

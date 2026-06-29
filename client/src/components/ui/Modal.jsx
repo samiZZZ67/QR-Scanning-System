@@ -11,42 +11,46 @@ const SIZE_MAP = {
 
 export default function Modal({
   open,
+  isOpen,
   onClose,
   title,
   children,
   size = "md",
   footer,
 }) {
+  const visible = open ?? isOpen ?? false;
+  const handleClose = onClose || (() => {});
+
   // Lock scroll
   useEffect(() => {
-    if (!open) return;
+    if (!visible) return;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [open]);
+  }, [visible]);
 
   // Escape key
   useEffect(() => {
-    if (!open) return;
+    if (!visible) return;
     const handler = (e) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") handleClose();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [open, onClose]);
+  }, [visible, handleClose]);
 
   return (
     <AnimatePresence>
-      {open && (
+      {visible && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           {/* Backdrop */}
           <motion.div
-            className="absolute inset-0 bg-espresso/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-rough/60 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onClose}
+            onClick={handleClose}
           />
 
           {/* Panel */}
@@ -69,7 +73,7 @@ export default function Modal({
                 {title}
               </h2>
               <button
-                onClick={onClose}
+                onClick={handleClose}
                 className="p-1.5 rounded-lg hover:bg-pale text-gold-muted hover:text-rough transition-colors"
                 aria-label="Close"
               >

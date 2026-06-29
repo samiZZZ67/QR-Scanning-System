@@ -17,7 +17,7 @@ export default function ItemPage() {
   const itemId = searchParams.get('item');
   const tableNumber = searchParams.get('table') || '1';
   const navigate = useNavigate();
-  const { addToCart } = useCart();
+  const { addItem } = useCart();
 
   const [item, setItem] = useState(null);
   const [reviews, setReviews] = useState([]);
@@ -41,13 +41,12 @@ export default function ItemPage() {
 
   function handleAdd() {
     if (!item) return;
-    addToCart({
-      menuItemId: item.id,
+    addItem({
+      id: item.id,
       name: item.name?.en || item.name,
       price: item.price,
-      image: item.imageUrl,
-      quantity: qty
-    });
+      imageUrl: item.imageUrl,
+    }, qty);
     setAdded(true);
     setTimeout(() => setAdded(false), 2500);
   }
