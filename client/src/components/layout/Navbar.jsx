@@ -7,6 +7,9 @@ const NAV_LINKS = [
   { label: "Home", to: "/" },
   { label: "Menu", to: "/order?table=101" },
   { label: "Contact", to: "/contact" },
+  { label: "Kitchen", to: "/kitchen" },
+  { label: "Waiter", to: "/waiter" },
+  { label: "Admin", to: "/admin" },
 ];
 
 export default function Navbar() {
