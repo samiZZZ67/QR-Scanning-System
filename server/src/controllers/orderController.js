@@ -49,3 +49,15 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
   if (io) io.emit('order.statusChanged', order);
   return res.json(order);
 });
+
+/**
+ * PATCH /api/orders/:id/notes  (staff)
+ * Updates kitchen notes for an order and broadcasts the change.
+ */
+export const updateOrderNotes = asyncHandler(async (req, res) => {
+  const { repository, io } = req.app.locals;
+  const order = await repository.updateOrderNotes(req.params.id, req.body.notes);
+  if (!order) return res.status(404).json({ error: 'Order not found' });
+  if (io) io.emit('order.statusChanged', order);
+  return res.json(order);
+});

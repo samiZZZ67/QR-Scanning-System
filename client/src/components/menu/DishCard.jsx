@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import OptimizedImage from '../ui/OptimizedImage.jsx';
 import Badge from '../ui/Badge.jsx';
 import StarRating from '../ui/StarRating.jsx';
@@ -10,8 +9,7 @@ import { formatMoney } from '../../utils/formatting.js';
  * DishCard — menu grid card.
  * Props: item, onAddToCart(item, qty), tableNumber
  */
-export default function DishCard({ item, onAddToCart, tableNumber }) {
-  const navigate = useNavigate();
+export default function DishCard({ item, onAddToCart, onCardClick, tableNumber }) {
   const [added, setAdded] = useState(false);
 
   const name        = item.name?.en        || item.name?.am        || String(item.name        || '');
@@ -27,7 +25,9 @@ export default function DishCard({ item, onAddToCart, tableNumber }) {
   }
 
   function handleCardClick() {
-    navigate(`/item?item=${item.id}&table=${tableNumber}`);
+    if (onCardClick) {
+      onCardClick(item);
+    }
   }
 
   return (

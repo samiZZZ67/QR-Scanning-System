@@ -4,7 +4,8 @@ import {
   createOrder,
   listOrders,
   getOrder,
-  updateOrderStatus
+  updateOrderStatus,
+  updateOrderNotes
 } from '../controllers/orderController.js';
 
 const router = Router();
@@ -20,5 +21,8 @@ router.get('/:id', getOrder);
 
 // PATCH /api/orders/:id/status  — staff only
 router.patch('/:id/status', requireStaffPin, updateOrderStatus);
+
+// PATCH /api/orders/:id/notes  — staff only
+router.patch('/:id/notes', requireStaffPin, updateOrderNotes);
 
 export default router;

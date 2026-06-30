@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle, Info, XCircle } from "lucide-react";
+import { AlertCircle, CheckCircle, Info, X, XCircle } from "lucide-react";
 
 const CONFIG = {
   error: { icon: XCircle, style: "bg-red-50   border-red-300   text-red-800" },
@@ -17,7 +17,7 @@ const CONFIG = {
  * Notice — contextual alert banner.
  * type: 'error' | 'success' | 'warning' | 'info'
  */
-export default function Notice({ type = "info", message, className = "" }) {
+export default function Notice({ type = "info", message, className = "", onDismiss }) {
   if (!message) return null;
   const { icon: Icon, style } = CONFIG[type] ?? CONFIG.info;
 
@@ -31,7 +31,17 @@ export default function Notice({ type = "info", message, className = "" }) {
       ].join(" ")}
     >
       <Icon size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
-      <span>{message}</span>
+      <span className="flex-1">{message}</span>
+      {onDismiss && (
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="rounded-md p-0.5 opacity-70 transition-opacity hover:opacity-100"
+          aria-label="Dismiss"
+        >
+          <X size={14} aria-hidden="true" />
+        </button>
+      )}
     </div>
   );
 }

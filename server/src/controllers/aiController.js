@@ -1,20 +1,20 @@
 import { asyncHandler } from '../middlewares/asyncHandler.js';
-import { runGrokTask, generateGrokImage } from '../services/grok.js';
+import { runGroqTask, generateGroqImage } from '../services/groq.js';
 
 /**
- * POST /api/ai/grok  (staff)
- * Runs a Grok AI text task (translate, writing, content).
+ * POST /api/ai/groq  (staff)
+ * Runs a Groq AI text task (translate, writing, content).
  */
-export const grokText = asyncHandler(async (req, res) => {
-  const result = await runGrokTask(req.body);
+export const groqText = asyncHandler(async (req, res) => {
+  const result = await runGroqTask(req.body);
   res.json(result);
 });
 
 /**
- * POST /api/ai/grok/image  (staff)
- * Generates an image via Grok's image model.
+ * POST /api/ai/groq/image  (staff)
+ * Generates an image via Groq's image model.
  */
-export const grokImage = asyncHandler(async (req, res) => {
-  const result = await generateGrokImage(req.body);
+export const groqImage = asyncHandler(async (req, res) => {
+  const result = await generateGroqImage(req.body);
   res.json(result);
 });

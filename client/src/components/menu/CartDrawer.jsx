@@ -1,11 +1,13 @@
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ShoppingCart, Minus, Plus, Trash2 } from 'lucide-react';
+import { X, ShoppingCart, Minus, Plus, Trash2, FileText } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext.jsx';
 import { formatMoney } from '../../utils/formatting.js';
 import Button from '../ui/Button.jsx';
 
 export function CartDrawer({ isOpen, onClose, onOrder, loading = false }) {
-  const { items, removeItem, updateQty, totalItems, totalPrice, clearCart } = useCart();
+  const { items, removeItem, updateQty, updateNote, totalItems, totalPrice, clearCart } = useCart();
+  const [expandedNote, setExpandedNote] = useState(null);
 
   return (
     <AnimatePresence>
@@ -61,58 +63,99 @@ export function CartDrawer({ isOpen, onClose, onOrder, loading = false }) {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {items.map((item) => {
+                  {items.map((item, idx) => {
                     const name = typeof item.name === 'object' ? item.name.en : item.name;
+                    const itemKey = `${item.id}-${idx}`;
+                    const isExpanded = expandedNote === itemKey;
                     return (
                       <motion.div
-                        key={item.id}
+                        key={itemKey}
                         layout
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, x: 50 }}
-                        className="flex gap-3 bg-pale rounded-xl p-3 border border-gold-muted/20"
+                        className="bg-pale rounded-xl p-3 border border-gold-muted/20"
                       >
-                        {/* Image */}
-                        {(item.imageUrl || item.image) && (
-                          <img
-                            src={item.imageUrl || item.image}
-                            alt={name || ''}
-                            className="w-16 h-16 rounded-lg object-cover shrink-0"
-                          />
-                        )}
+                        <div className="flex gap-3">
+                          {/* Image */}
+                          {(item.imageUrl || item.image) && (
+                            <img
+                              src={item.imageUrl || item.image}
+                              alt={name || ''}
+                              className="w-16 h-16 rounded-lg object-cover shrink-0"
+                            />
+                          )}
 
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-rough text-sm truncate">{name}</p>
-                          <p className="text-xs text-gold mt-0.5">{formatMoney(item.price)}</p>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-rough text-sm truncate">{name}</p>
+                            <p className="text-xs text-gold mt-0.5">{formatMoney(item.price)}</p>
 
-                          <div className="flex items-center justify-between mt-2">
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center justify-between mt-2">
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => updateQty(item.id, item.qty - 1, item.note)}
+                                  className="w-7 h-7 rounded-lg bg-pale-light border border-gold-muted/30 flex items-center justify-center text-rough hover:bg-gold hover:text-pale-light transition-colors"
+                                  aria-label="Decrease quantity"
+                                >
+                                  <Minus size={14} />
+                                </button>
+                                <span className="w-8 text-center text-sm font-semibold text-rough">{item.qty}</span>
+                                <button
+                                  onClick={() => updateQty(item.id, item.qty + 1, item.note)}
+                                  className="w-7 h-7 rounded-lg bg-pale-light border border-gold-muted/30 flex items-center justify-center text-rough hover:bg-gold hover:text-pale-light transition-colors"
+                                  aria-label="Increase quantity"
+                                >
+                                  <Plus size={14} />
+                                </button>
+                              </div>
+
                               <button
-                                onClick={() => updateQty(item.id, item.qty - 1)}
-                                className="w-7 h-7 rounded-lg bg-pale-light border border-gold-muted/30 flex items-center justify-center text-rough hover:bg-gold hover:text-pale-light transition-colors"
-                                aria-label="Decrease quantity"
+                                onClick={() => removeItem(item.id, item.note)}
+                                className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                                aria-label={`Remove ${name}`}
                               >
-                                <Minus size={14} />
-                              </button>
-                              <span className="w-8 text-center text-sm font-semibold text-rough">{item.qty}</span>
-                              <button
-                                onClick={() => updateQty(item.id, item.qty + 1)}
-                                className="w-7 h-7 rounded-lg bg-pale-light border border-gold-muted/30 flex items-center justify-center text-rough hover:bg-gold hover:text-pale-light transition-colors"
-                                aria-label="Increase quantity"
-                              >
-                                <Plus size={14} />
+                                <Trash2 size={14} />
                               </button>
                             </div>
-
-                            <button
-                              onClick={() => removeItem(item.id)}
-                              className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                              aria-label={`Remove ${name}`}
-                            >
-                              <Trash2 size={14} />
-                            </button>
                           </div>
                         </div>
+
+                        {/* Notes section */}
+                        <AnimatePresence>
+                          {isExpanded && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="mt-3 pt-3 border-t border-gold-muted/20"
+                            >
+                              <textarea
+                                value={item.note || ''}
+                                onChange={(e) => updateNote(item.id, e.target.value, item.note)}
+                                placeholder="e.g., No onions, less spicy..."
+                                className="w-full text-sm p-2 border border-gold-muted/30 rounded-lg bg-pale-light text-rough placeholder-gold-muted/50 focus:outline-none focus:ring-1 focus:ring-gold"
+                                rows="2"
+                              />
+                            </motion.div>
+                          )}
+                          {!isExpanded && item.note && (
+                            <motion.div
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              className="mt-2 text-xs text-gold-muted italic"
+                            >
+                              Note: {item.note}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+
+                        <button
+                          onClick={() => setExpandedNote(isExpanded ? null : itemKey)}
+                          className="mt-2 text-xs text-gold hover:text-rough transition-colors flex items-center gap-1"
+                        >
+                          <FileText size={12} />
+                          {isExpanded ? 'Done' : 'Add Note'}
+                        </button>
                       </motion.div>
                     );
                   })}

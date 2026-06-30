@@ -1,20 +1,94 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Search, ArrowRight, Eye, ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { RefreshCw, Search, ArrowRight, ChevronDown, ChevronUp, StickyNote, Save } from 'lucide-react';
 import { listOrders, updateOrderStatus } from '../../../api/orders.js';
 import { useRealtime } from '../../../hooks/useRealtime.js';
 import { formatMoney, timeAgo, STATUS_COLORS, STATUS_ORDER } from '../../../utils/formatting.js';
 import Button from '../../../components/ui/Button.jsx';
-import Notice from '../../../components/ui/Notice.jsx';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner.jsx';
 import Card from '../../../components/ui/Card.jsx';
+import { useToast } from '../../../contexts/ToastContext.jsx';
+import { api } from '../../../api/client.js';
 
 const STATUS_FILTERS = ['all', ...STATUS_ORDER, 'cancelled'];
 
+/** Inline editable note textarea embedded in the expanded order row. */
+function InlineNoteBox({ order, onSaved }) {
+  const toast = useToast();
+  const [note, setNote] = useState(order.notes || '');
+  const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const textareaRef = useRef(null);
+
+  useEffect(() => {
+    setNote(order.notes || '');
+    setDirty(false);
+  }, [order.notes]);
+
+  async function handleSave() {
+    if (!dirty) return;
+    setSaving(true);
+    try {
+      await api(`/orders/${order.id}/notes`, { method: 'PATCH', body: { notes: note } });
+      setDirty(false);
+      onSaved?.(order.id, note);
+      toast.success('Note saved successfully.');
+    } catch (err) {
+      toast.error(err.message || 'Failed to save note.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <StickyNote size={14} className="text-gold" />
+        <span className="text-xs font-semibold text-gold uppercase tracking-wider">
+          Kitchen Notes
+        </span>
+      </div>
+      <textarea
+        ref={textareaRef}
+        value={note}
+        onChange={(e) => { setNote(e.target.value); setDirty(true); }}
+        onBlur={handleSave}
+        rows={3}
+        placeholder="Add a kitchen note for this order…"
+        className={[
+          'w-full max-w-xl px-3 py-2.5 text-sm rounded-xl border resize-none transition-colors',
+          'bg-surface text-rough placeholder:text-gold-muted',
+          'focus:outline-none focus:ring-1 focus:ring-gold',
+          dirty ? 'border-gold' : 'border-gold-muted/40',
+        ].join(' ')}
+        aria-label="Kitchen note for this order"
+      />
+      {dirty && (
+        <div className="flex gap-2">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-1.5 text-xs font-medium text-gold hover:text-gold-hover transition-colors disabled:opacity-50"
+          >
+            <Save size={12} />
+            {saving ? 'Saving…' : 'Save note'}
+          </button>
+          <button
+            onClick={() => { setNote(order.notes || ''); setDirty(false); }}
+            className="text-xs text-gold-muted hover:text-rough transition-colors"
+          >
+            Discard
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function OrdersTab() {
+  const toast = useToast();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState(null);
 
   // Filters & Pagination
   const [selectedStatus, setSelectedStatus] = useState('all');
@@ -33,13 +107,14 @@ export default function OrdersTab() {
       }
       const data = await listOrders(filters);
       setOrders(Array.isArray(data) ? data : data.orders || []);
-      setPage(1); // reset to first page
+      setPage(1);
     } catch (err) {
       setError(err.message || 'Failed to fetch orders');
+      toast.error(err.message || 'Failed to load orders.');
     } finally {
       setLoading(false);
     }
-  }, [selectedStatus]);
+  }, [selectedStatus]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetchOrders();
@@ -52,8 +127,8 @@ export default function OrdersTab() {
       if (exists) return prev;
       return [order, ...prev];
     });
-    setNotice({ type: 'info', message: `New order received from Table ${order.tableNumber}` });
-  }, []);
+    toast.info(`New order from Table ${order.tableNumber}`, 'New Order');
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleOrderUpdate = useCallback((order) => {
     setOrders((prev) => prev.map((o) => o.id === order.id ? order : o));
@@ -67,11 +142,7 @@ export default function OrdersTab() {
   const toggleExpand = (id) => {
     setExpandedOrders(prev => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
       return next;
     });
   };
@@ -85,39 +156,48 @@ export default function OrdersTab() {
     };
     const nextStatus = nextStatusMap[order.status];
     if (!nextStatus) return;
-
     try {
       await updateOrderStatus(order.id, nextStatus);
-      setNotice({ type: 'success', message: `Order #${order.id} advanced to ${nextStatus}` });
+      toast.success(`Order #${order.id} → ${nextStatus}`);
       fetchOrders();
     } catch (err) {
-      setNotice({ type: 'error', message: err.message || 'Failed to update order status' });
+      toast.error(err.message || 'Failed to update order status');
     }
   };
 
   const handleCancelOrder = async (order, e) => {
     e.stopPropagation();
-    if (!window.confirm(`Are you sure you want to cancel order #${order.id}?`)) return;
+    const confirmed = await toast.confirm({
+      title: 'Cancel this order?',
+      message: `Order #${order.id} from Table ${order.tableNumber} will be permanently cancelled.`,
+      confirmLabel: 'Yes, Cancel Order',
+      cancelLabel: 'Keep Order',
+    });
+    if (!confirmed) return;
     try {
       await updateOrderStatus(order.id, 'cancelled');
-      setNotice({ type: 'success', message: `Order #${order.id} cancelled` });
+      toast.success(`Order #${order.id} cancelled.`);
       fetchOrders();
     } catch (err) {
-      setNotice({ type: 'error', message: err.message || 'Failed to cancel order' });
+      toast.error(err.message || 'Failed to cancel order');
     }
   };
+
+  const handleNoteSaved = useCallback((orderId, note) => {
+    setOrders((prev) =>
+      prev.map((o) => o.id === orderId ? { ...o, notes: note } : o)
+    );
+  }, []);
 
   const filteredOrders = orders.filter(order => {
     if (!searchTerm) return true;
     return order.tableNumber.toString().includes(searchTerm);
   });
 
-  // Calculate Metrics based on current orders shown
   const totalOrders = filteredOrders.length;
   const totalRevenue = filteredOrders.reduce((sum, o) => sum + (o.status !== 'cancelled' ? o.total : 0), 0);
   const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
-  // Pagination
   const paginatedOrders = filteredOrders.slice((page - 1) * itemsPerPage, page * itemsPerPage);
   const totalPages = Math.ceil(filteredOrders.length / itemsPerPage) || 1;
 
@@ -135,12 +215,10 @@ export default function OrdersTab() {
         </Button>
       </div>
 
-      {notice && (
-        <Notice
-          type={notice.type}
-          message={notice.message}
-          className="my-3"
-        />
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-800">
+          {error}
+        </div>
       )}
 
       {/* Summary KPI Panel */}
@@ -246,14 +324,19 @@ export default function OrdersTab() {
                       </div>
                     </div>
 
-                    {/* Row Content / Details */}
+                    {/* Expanded Row Details */}
                     {isExpanded && (
-                      <div className="px-6 pb-6 pt-2 bg-surface/20 border-t border-gold-muted/15 space-y-4">
+                      <div className="px-6 pb-6 pt-2 bg-surface/20 border-t border-gold-muted/15 space-y-5">
+                        {/* Order items */}
                         <div>
-                          <h4 className="text-xs font-semibold text-gold uppercase tracking-wider mb-2">Order Items Details</h4>
+                          <h4 className="text-xs font-semibold text-gold uppercase tracking-wider mb-2">
+                            Order Items
+                          </h4>
                           <ul className="divide-y divide-gold-muted/15 text-sm max-w-xl">
                             {(order.items || []).map((item, idx) => {
-                              const name = typeof item.name === 'object' ? item.name.en : (item.name || `MenuItem #${item.menuItemId}`);
+                              const name = typeof item.name === 'object'
+                                ? item.name.en
+                                : (item.name || `MenuItem #${item.menuItemId}`);
                               return (
                                 <li key={idx} className="py-2 flex justify-between">
                                   <span className="text-body font-medium">{name}</span>
@@ -266,14 +349,11 @@ export default function OrdersTab() {
                           </ul>
                         </div>
 
-                        {order.notes && (
-                          <div className="bg-pale/50 border border-gold-muted/20 p-3 rounded-lg max-w-xl">
-                            <span className="text-xs font-semibold text-gold-muted uppercase">Kitchen Notes:</span>
-                            <p className="text-xs text-body mt-1 leading-relaxed">{order.notes}</p>
-                          </div>
-                        )}
+                        {/* ── Inline Note Box (replaces Add Note button) ─────────── */}
+                        <InlineNoteBox order={order} onSaved={handleNoteSaved} />
 
-                        <div className="flex flex-wrap gap-2 pt-2">
+                        {/* Actions */}
+                        <div className="flex flex-wrap gap-2 pt-1">
                           {nextStatusLabel && (
                             <Button
                               variant="primary"
@@ -305,23 +385,14 @@ export default function OrdersTab() {
           {/* Pagination Controls */}
           <div className="flex items-center justify-between bg-surface p-4 rounded-xl border border-gold-muted/30">
             <span className="text-xs text-gold-muted">
-              Page <span className="font-semibold text-rough">{page}</span> of <span className="font-semibold text-rough">{totalPages}</span>
+              Page <span className="font-semibold text-rough">{page}</span> of{' '}
+              <span className="font-semibold text-rough">{totalPages}</span>
             </span>
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page === 1}
-                onClick={() => setPage(p => Math.max(p - 1, 1))}
-              >
+              <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(p => Math.max(p - 1, 1))}>
                 Previous
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page === totalPages}
-                onClick={() => setPage(p => Math.min(p + 1, totalPages))}
-              >
+              <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => setPage(p => Math.min(p + 1, totalPages))}>
                 Next
               </Button>
             </div>

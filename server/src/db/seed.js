@@ -46,6 +46,24 @@ export function seedTables() {
   return tables;
 }
 
+export function seedFloors() {
+  return [
+    { number: 1, name: 'Floor 1', description: 'Main dining floor' },
+    { number: 2, name: 'Floor 2', description: 'Upper dining floor' },
+    { number: 3, name: 'Floor 3', description: 'Guest rooms and private dining' }
+  ];
+}
+
+export function seedStaffMembers() {
+  return [
+    { name: 'Waiter A', role: 'Waiter', assignedFloor: 1, online: false },
+    { name: 'Waiter B', role: 'Waiter', assignedFloor: 1, online: false },
+    { name: 'Waiter C', role: 'Waiter', assignedFloor: 2, online: false },
+    { name: 'Chef A', role: 'Kitchen', assignedFloor: null, online: false },
+    { name: 'Chef B', role: 'Kitchen', assignedFloor: null, online: false }
+  ];
+}
+
 export const seedCategories = [
   { id: 1, name: { en: 'Starters', am: 'መክሰስ', ar: 'مقبلات' }, icon: 'Leaf', sortOrder: 1 },
   { id: 2, name: { en: 'Main Course', am: 'ዋና ምግብ', ar: 'أطباق رئيسية' }, icon: 'Utensils', sortOrder: 2 },

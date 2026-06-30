@@ -9,11 +9,15 @@
     --color-gold-hover: #b89228;
     --color-gold-muted: #d4b85a;
     --color-off-navy: #1a1f3a;
+    --color-body: #5f4a3a;
 
     --font-display: "Playfair Display", Georgia, serif;
     --font-sans: "Inter", system-ui, sans-serif;
 
     --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+
+    --shadow-card: 0 10px 25px rgba(26, 14, 5, 0.08);
+    --shadow-lifted: 0 18px 45px rgba(26, 14, 5, 0.14);
 }
 
 *,

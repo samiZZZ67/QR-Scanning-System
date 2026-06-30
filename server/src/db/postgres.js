@@ -1,4 +1,5 @@
 import pg from 'pg';
+import { randomUUID } from 'node:crypto';
 import {
   calculateOrderTotal,
   deriveFloor,
@@ -8,7 +9,9 @@ import {
 } from '../domain/order.js';
 import {
   seedCategories,
+  seedFloors,
   seedMenuItems,
+  seedStaffMembers,
   seedTables,
   defaultAssets,
   fallbackMenuImage
@@ -34,6 +37,42 @@ function parseJson(value, fallback = {}) {
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+function makeInternalId(prefix) {
+  return `${prefix}_${randomUUID()}`;
+}
+
+function buildQrUrl(internalId, fallbackParam = {}) {
+  try {
+    const url = new URL('/order', config.publicBaseUrl);
+    if (internalId) {
+      url.searchParams.set('id', internalId);
+    } else {
+      for (const [key, value] of Object.entries(fallbackParam)) {
+        if (value !== undefined && value !== null && value !== '') {
+          url.searchParams.set(key, String(value));
+        }
+      }
+    }
+    return url.toString();
+  } catch {
+    const params = internalId
+      ? `id=${encodeURIComponent(internalId)}`
+      : new URLSearchParams(fallbackParam).toString();
+    return `/order?${params}`;
+  }
+}
+
+function numberOrNull(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function floorFromNumber(value, fallback = 1) {
+  const parsed = Number(value);
+  if (Number.isInteger(parsed) && parsed >= 100) return Math.floor(parsed / 100);
+  return Number(fallback) || 1;
 }
 
 function poolConfig(connectionString) {
@@ -86,12 +125,74 @@ function mapMenuItem(row) {
   };
 }
 
+function mapFloor(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    number: row.number,
+    description: row.description || '',
+    active: Boolean(row.active),
+    createdAt: row.created_at
+  };
+}
+
 function mapTable(row) {
   return {
+    id: row.id || row.number,
+    internalId: row.internal_id || '',
     number: row.number,
     floor: row.floor,
+    floorId: row.floor_id || null,
+    floorName: row.floor_name || `Floor ${row.floor}`,
     seats: row.seats,
-    active: Boolean(row.active)
+    active: Boolean(row.active),
+    qrUrl: buildQrUrl(row.internal_id, { table: row.number })
+  };
+}
+
+function mapRoom(row) {
+  return {
+    id: row.id,
+    internalId: row.internal_id || '',
+    number: row.room_number,
+    roomNumber: row.room_number,
+    floor: row.floor,
+    floorId: row.floor_id || null,
+    floorName: row.floor_name || `Floor ${row.floor}`,
+    active: Boolean(row.active),
+    qrUrl: buildQrUrl(row.internal_id, { room: row.room_number })
+  };
+}
+
+function locationLabel(row) {
+  if (row.location_type === 'room') {
+    return `Room ${row.room_number || row.table_number}`;
+  }
+  return `Table ${row.table_number}`;
+}
+
+function mapStaffMember(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    role: row.role,
+    assignedFloor: row.assigned_floor,
+    online: Boolean(row.online),
+    active: Boolean(row.active),
+    createdAt: row.created_at
+  };
+}
+
+function mapManagerNotification(row) {
+  return {
+    id: row.id,
+    staffName: row.staff_name,
+    staffRole: row.staff_role,
+    assignedFloor: row.assigned_floor,
+    reason: row.reason || '',
+    status: row.status,
+    createdAt: row.created_at,
+    resolvedAt: row.resolved_at
   };
 }
 
@@ -100,7 +201,12 @@ function mapNotification(row) {
     id: row.id,
     type: row.type,
     tableNumber: row.table_number,
+    roomNumber: row.room_number || '',
+    locationType: row.location_type || 'table',
+    locationId: row.location_id || '',
+    locationLabel: locationLabel(row),
     floor: row.floor,
+    note: row.reason || '',
     status: row.status,
     createdAt: row.created_at,
     resolvedAt: row.resolved_at
@@ -150,9 +256,29 @@ function mapAsset(row) {
 async function migrate(pool) {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS tables (
+      id SERIAL,
       number INTEGER PRIMARY KEY,
       floor INTEGER NOT NULL,
+      internal_id TEXT NOT NULL DEFAULT '',
       seats INTEGER NOT NULL DEFAULT 4,
+      active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS floors (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      number INTEGER NOT NULL UNIQUE,
+      description TEXT NOT NULL DEFAULT '',
+      active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS rooms (
+      id SERIAL PRIMARY KEY,
+      room_number INTEGER NOT NULL UNIQUE,
+      floor INTEGER NOT NULL,
+      internal_id TEXT NOT NULL UNIQUE,
       active BOOLEAN NOT NULL DEFAULT TRUE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
@@ -189,6 +315,9 @@ async function migrate(pool) {
       id SERIAL PRIMARY KEY,
       table_number INTEGER NOT NULL,
       floor INTEGER NOT NULL,
+      location_type TEXT NOT NULL DEFAULT 'table' CHECK(location_type IN ('table', 'room')),
+      location_id TEXT NOT NULL DEFAULT '',
+      room_number TEXT NOT NULL DEFAULT '',
       status TEXT NOT NULL DEFAULT 'received',
       notes TEXT NOT NULL DEFAULT '',
       total INTEGER NOT NULL,
@@ -204,6 +333,7 @@ async function migrate(pool) {
       name_json JSONB NOT NULL,
       unit_price INTEGER NOT NULL,
       quantity INTEGER NOT NULL,
+      note TEXT NOT NULL DEFAULT '',
       line_total INTEGER NOT NULL
     );
 
@@ -212,6 +342,31 @@ async function migrate(pool) {
       type TEXT NOT NULL CHECK(type IN ('call-waiter', 'request-bill')),
       table_number INTEGER NOT NULL,
       floor INTEGER NOT NULL,
+      location_type TEXT NOT NULL DEFAULT 'table' CHECK(location_type IN ('table', 'room', 'kitchen')),
+      location_id TEXT NOT NULL DEFAULT '',
+      room_number TEXT NOT NULL DEFAULT '',
+      reason TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open', 'resolved')),
+      created_at TIMESTAMPTZ NOT NULL,
+      resolved_at TIMESTAMPTZ
+    );
+
+    CREATE TABLE IF NOT EXISTS staff_members (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      role TEXT NOT NULL,
+      assigned_floor INTEGER,
+      online BOOLEAN NOT NULL DEFAULT FALSE,
+      active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS manager_notifications (
+      id SERIAL PRIMARY KEY,
+      staff_name TEXT NOT NULL,
+      staff_role TEXT NOT NULL,
+      assigned_floor INTEGER,
+      reason TEXT NOT NULL DEFAULT '',
       status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open', 'resolved')),
       created_at TIMESTAMPTZ NOT NULL,
       resolved_at TIMESTAMPTZ
@@ -253,26 +408,77 @@ async function migrate(pool) {
     ALTER TABLE categories ADD COLUMN IF NOT EXISTS image_thumbnail TEXT NOT NULL DEFAULT '';
     ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS image_public_id TEXT NOT NULL DEFAULT '';
     ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS image_thumbnail TEXT NOT NULL DEFAULT '';
+    ALTER TABLE tables ADD COLUMN IF NOT EXISTS internal_id TEXT NOT NULL DEFAULT '';
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS location_type TEXT NOT NULL DEFAULT 'table';
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS location_id TEXT NOT NULL DEFAULT '';
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS room_number TEXT NOT NULL DEFAULT '';
+    ALTER TABLE order_items ADD COLUMN IF NOT EXISTS note TEXT NOT NULL DEFAULT '';
+    ALTER TABLE service_notifications ADD COLUMN IF NOT EXISTS location_type TEXT NOT NULL DEFAULT 'table';
+    ALTER TABLE service_notifications ADD COLUMN IF NOT EXISTS location_id TEXT NOT NULL DEFAULT '';
+    ALTER TABLE service_notifications ADD COLUMN IF NOT EXISTS room_number TEXT NOT NULL DEFAULT '';
+    ALTER TABLE service_notifications ADD COLUMN IF NOT EXISTS reason TEXT NOT NULL DEFAULT '';
+
+    UPDATE tables
+    SET internal_id = 'table_' || number::text || '_' || floor::text
+    WHERE internal_id = '';
+
+    INSERT INTO floors (name, number, description, active)
+    SELECT 'Floor ' || floor::text, floor, '', TRUE
+    FROM (SELECT DISTINCT floor FROM tables WHERE floor IS NOT NULL) AS existing_floors
+    ON CONFLICT (number) DO NOTHING;
 
     CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
     CREATE INDEX IF NOT EXISTS idx_orders_floor ON orders(floor);
     CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_orders_location ON orders(location_type, location_id);
     CREATE INDEX IF NOT EXISTS idx_menu_reviews_item ON menu_reviews(menu_item_id);
     CREATE INDEX IF NOT EXISTS idx_feedback_created ON order_feedback(created_at DESC);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_tables_internal_id
+      ON tables(internal_id)
+      WHERE internal_id <> '';
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_rooms_internal_id ON rooms(internal_id);
+    CREATE INDEX IF NOT EXISTS idx_notifications_location
+      ON service_notifications(location_type, location_id);
+    CREATE INDEX IF NOT EXISTS idx_manager_notifications_status
+      ON manager_notifications(status, created_at DESC);
   `);
 }
 
 // ─── Seed ─────────────────────────────────────────────────────────────────────
 
 async function seed(pool) {
+  const floorCount = Number(
+    (await pool.query('SELECT COUNT(*) AS count FROM floors')).rows[0].count
+  );
+  if (!floorCount) {
+    for (const floor of seedFloors()) {
+      await pool.query(
+        'INSERT INTO floors (name, number, description, active) VALUES ($1, $2, $3, TRUE)',
+        [floor.name, floor.number, floor.description || '']
+      );
+    }
+  }
+
   const tableCount = Number(
     (await pool.query('SELECT COUNT(*) AS count FROM tables')).rows[0].count
   );
   if (!tableCount) {
     for (const t of seedTables()) {
       await pool.query(
-        'INSERT INTO tables (number, floor, seats, active) VALUES ($1, $2, $3, TRUE)',
-        [t.number, t.floor, t.seats]
+        'INSERT INTO tables (number, floor, internal_id, seats, active) VALUES ($1, $2, $3, $4, TRUE)',
+        [t.number, t.floor, makeInternalId('table'), t.seats]
+      );
+    }
+  }
+
+  const staffCount = Number(
+    (await pool.query('SELECT COUNT(*) AS count FROM staff_members')).rows[0].count
+  );
+  if (!staffCount) {
+    for (const staff of seedStaffMembers()) {
+      await pool.query(
+        'INSERT INTO staff_members (name, role, assigned_floor, online, active) VALUES ($1, $2, $3, $4, TRUE)',
+        [staff.name, staff.role, staff.assignedFloor ?? null, bool(staff.online)]
       );
     }
   }
@@ -492,6 +698,7 @@ export async function createPostgresRepository(
       name: parseJson(item.name_json),
       unitPrice: item.unit_price,
       quantity: item.quantity,
+      note: item.note || '',
       lineTotal: item.line_total
     }));
 
@@ -502,6 +709,10 @@ export async function createPostgresRepository(
     return {
       id: row.id,
       tableNumber: row.table_number,
+      roomNumber: row.room_number || '',
+      locationType: row.location_type || 'table',
+      locationId: row.location_id || '',
+      locationLabel: locationLabel(row),
       floor: row.floor,
       status: row.status,
       notes: row.notes,
@@ -521,31 +732,336 @@ export async function createPostgresRepository(
     return row ? hydrateOrder(row) : null;
   }
 
+  async function resolveLocation(input = {}) {
+    const internalId = requireText(input.locationId ?? input.id, '');
+    if (internalId) {
+      const table = (
+        await pool.query(
+          'SELECT * FROM tables WHERE internal_id = $1 AND active = TRUE',
+          [internalId]
+        )
+      ).rows[0];
+      if (table) {
+        return {
+          type: 'table',
+          tableNumber: table.number,
+          roomNumber: '',
+          floor: table.floor,
+          internalId: table.internal_id,
+          label: `Table ${table.number}`
+        };
+      }
+
+      const room = (
+        await pool.query(
+          'SELECT * FROM rooms WHERE internal_id = $1 AND active = TRUE',
+          [internalId]
+        )
+      ).rows[0];
+      if (room) {
+        return {
+          type: 'room',
+          tableNumber: room.room_number,
+          roomNumber: String(room.room_number),
+          floor: room.floor,
+          internalId: room.internal_id,
+          label: `Room ${room.room_number}`
+        };
+      }
+      throw new Error('QR location was not found');
+    }
+
+    const roomInput = input.roomNumber ?? input.room;
+    if (roomInput !== undefined && roomInput !== null && roomInput !== '') {
+      const roomNumber = Number(roomInput);
+      const room = (
+        await pool.query(
+          'SELECT * FROM rooms WHERE room_number = $1 AND active = TRUE',
+          [roomNumber]
+        )
+      ).rows[0];
+      if (room) {
+        return {
+          type: 'room',
+          tableNumber: room.room_number,
+          roomNumber: String(room.room_number),
+          floor: room.floor,
+          internalId: room.internal_id,
+          label: `Room ${room.room_number}`
+        };
+      }
+      return {
+        type: 'room',
+        tableNumber: roomNumber,
+        roomNumber: String(roomNumber),
+        floor: floorFromNumber(roomNumber, input.floor),
+        internalId: '',
+        label: `Room ${roomNumber}`
+      };
+    }
+
+    const tableNumber = Number(input.tableNumber ?? input.table);
+    if (!Number.isInteger(tableNumber) || tableNumber < 1) {
+      throw new Error('Valid table, room, or QR location is required');
+    }
+    const table = (
+      await pool.query(
+        'SELECT * FROM tables WHERE number = $1 AND active = TRUE',
+        [tableNumber]
+      )
+    ).rows[0];
+    if (table) {
+      return {
+        type: 'table',
+        tableNumber: table.number,
+        roomNumber: '',
+        floor: table.floor,
+        internalId: table.internal_id,
+        label: `Table ${table.number}`
+      };
+    }
+    return {
+      type: 'table',
+      tableNumber,
+      roomNumber: '',
+      floor: floorFromNumber(tableNumber, input.floor),
+      internalId: '',
+      label: `Table ${tableNumber}`
+    };
+  }
+
   return {
     raw: pool,
     close: () => pool.end(),
 
+    async listFloors(includeInactive = false) {
+      const sql = `SELECT * FROM floors ${includeInactive ? '' : 'WHERE active = TRUE'} ORDER BY number, id`;
+      return (await pool.query(sql)).rows.map(mapFloor);
+    },
+
+    async createFloor(input) {
+      const number = Number(input.number);
+      if (!Number.isInteger(number) || number < 1) {
+        throw new Error('Floor number must be a positive number');
+      }
+      const result = await pool.query(
+        `INSERT INTO floors (name, number, description, active, created_at)
+         VALUES ($1, $2, $3, TRUE, $4)
+         RETURNING id`,
+        [
+          requireText(input.name, `Floor ${number}`),
+          number,
+          requireText(input.description, ''),
+          nowIso()
+        ]
+      );
+      return (await this.listFloors(true)).find((floor) => floor.id === result.rows[0].id);
+    },
+
+    async updateFloor(id, input) {
+      const current = (
+        await pool.query('SELECT * FROM floors WHERE id = $1', [Number(id)])
+      ).rows[0];
+      if (!current) return null;
+      const nextNumber = Number(input.number ?? current.number);
+      if (!Number.isInteger(nextNumber) || nextNumber < 1) {
+        throw new Error('Floor number must be a positive number');
+      }
+
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query(
+          `UPDATE floors
+           SET name = $1, number = $2, description = $3, active = $4
+           WHERE id = $5`,
+          [
+            requireText(input.name, current.name),
+            nextNumber,
+            requireText(input.description, current.description),
+            input.active === undefined ? current.active : bool(input.active),
+            Number(id)
+          ]
+        );
+        if (nextNumber !== current.number) {
+          await client.query('UPDATE tables SET floor = $1 WHERE floor = $2', [
+            nextNumber,
+            current.number
+          ]);
+          await client.query('UPDATE rooms SET floor = $1 WHERE floor = $2', [
+            nextNumber,
+            current.number
+          ]);
+        }
+        await client.query('COMMIT');
+      } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+      } finally {
+        client.release();
+      }
+      return (await this.listFloors(true)).find((floor) => floor.id === Number(id));
+    },
+
+    async deleteFloor(id) {
+      const floor = (
+        await pool.query('SELECT * FROM floors WHERE id = $1', [Number(id)])
+      ).rows[0];
+      if (!floor) return 0;
+      const tableCount = Number(
+        (await pool.query('SELECT COUNT(*) AS count FROM tables WHERE floor = $1', [
+          floor.number
+        ])).rows[0].count
+      );
+      const roomCount = Number(
+        (await pool.query('SELECT COUNT(*) AS count FROM rooms WHERE floor = $1', [
+          floor.number
+        ])).rows[0].count
+      );
+      if (tableCount || roomCount) {
+        throw new Error('Move or delete tables and rooms before deleting this floor');
+      }
+      return (await pool.query('DELETE FROM floors WHERE id = $1', [Number(id)])).rowCount;
+    },
+
     async listTables() {
       return (
-        await pool.query('SELECT * FROM tables ORDER BY floor, number')
+        await pool.query(
+          `SELECT tables.*, floors.id AS floor_id, floors.name AS floor_name
+           FROM tables
+           LEFT JOIN floors ON floors.number = tables.floor
+           ORDER BY tables.floor, tables.number`
+        )
       ).rows.map(mapTable);
     },
 
     async addTable(input) {
       const number = Number(input.number);
       const seats = Number(input.seats || 4);
-      const floor = deriveFloor(number);
+      const floor = Number(input.floor ?? input.floorNumber ?? floorFromNumber(number));
+      if (!Number.isInteger(number) || number < 1) {
+        throw new Error('Table number must be a positive number');
+      }
+      if (!Number.isInteger(floor) || floor < 1) {
+        throw new Error('Table floor is required');
+      }
+      const floorExists = (
+        await pool.query('SELECT id FROM floors WHERE number = $1', [floor])
+      ).rows[0];
+      if (!floorExists) {
+        throw new Error('Please create the floor before adding tables to it');
+      }
       await pool.query(
-        'INSERT INTO tables (number, floor, seats, active) VALUES ($1, $2, $3, TRUE)',
-        [number, floor, seats]
+        'INSERT INTO tables (number, floor, internal_id, seats, active) VALUES ($1, $2, $3, $4, TRUE)',
+        [number, floor, makeInternalId('table'), seats]
       );
       return (await this.listTables()).find((t) => t.number === number);
+    },
+
+    async updateTable(number, input) {
+      const current = (
+        await pool.query('SELECT * FROM tables WHERE number = $1', [Number(number)])
+      ).rows[0];
+      if (!current) return null;
+      const nextNumber = Number(input.number ?? current.number);
+      const floor = Number(input.floor ?? input.floorNumber ?? current.floor);
+      if (!Number.isInteger(nextNumber) || nextNumber < 1) {
+        throw new Error('Table number must be a positive number');
+      }
+      const floorExists = (
+        await pool.query('SELECT id FROM floors WHERE number = $1', [floor])
+      ).rows[0];
+      if (!floorExists) {
+        throw new Error('Please create the floor before assigning tables to it');
+      }
+      await pool.query(
+        `UPDATE tables
+         SET number = $1, floor = $2, seats = $3, active = $4
+         WHERE number = $5`,
+        [
+          nextNumber,
+          floor,
+          Number(input.seats ?? current.seats),
+          input.active === undefined ? current.active : bool(input.active),
+          Number(number)
+        ]
+      );
+      return (await this.listTables()).find((t) => t.number === nextNumber);
     },
 
     async deleteTable(number) {
       return (
         await pool.query('DELETE FROM tables WHERE number = $1', [Number(number)])
       ).rowCount;
+    },
+
+    async listRooms() {
+      return (
+        await pool.query(
+          `SELECT rooms.*, floors.id AS floor_id, floors.name AS floor_name
+           FROM rooms
+           LEFT JOIN floors ON floors.number = rooms.floor
+           ORDER BY rooms.floor, rooms.room_number`
+        )
+      ).rows.map(mapRoom);
+    },
+
+    async addRoom(input) {
+      const roomNumber = Number(input.roomNumber ?? input.number);
+      const floor = Number(input.floor ?? input.floorNumber);
+      if (!Number.isInteger(roomNumber) || roomNumber < 1) {
+        throw new Error('Room number must be a positive number');
+      }
+      if (!Number.isInteger(floor) || floor < 1) {
+        throw new Error('Room floor is required');
+      }
+      const floorExists = (
+        await pool.query('SELECT id FROM floors WHERE number = $1', [floor])
+      ).rows[0];
+      if (!floorExists) {
+        throw new Error('Please create the floor before adding rooms to it');
+      }
+      const result = await pool.query(
+        `INSERT INTO rooms (room_number, floor, internal_id, active, created_at)
+         VALUES ($1, $2, $3, TRUE, $4)
+         RETURNING id`,
+        [roomNumber, floor, makeInternalId('room'), nowIso()]
+      );
+      return (await this.listRooms()).find((room) => room.id === result.rows[0].id);
+    },
+
+    async updateRoom(id, input) {
+      const current = (
+        await pool.query('SELECT * FROM rooms WHERE id = $1', [Number(id)])
+      ).rows[0];
+      if (!current) return null;
+      const roomNumber = Number(input.roomNumber ?? input.number ?? current.room_number);
+      const floor = Number(input.floor ?? input.floorNumber ?? current.floor);
+      if (!Number.isInteger(roomNumber) || roomNumber < 1) {
+        throw new Error('Room number must be a positive number');
+      }
+      const floorExists = (
+        await pool.query('SELECT id FROM floors WHERE number = $1', [floor])
+      ).rows[0];
+      if (!floorExists) {
+        throw new Error('Please create the floor before assigning rooms to it');
+      }
+      await pool.query(
+        `UPDATE rooms
+         SET room_number = $1, floor = $2, active = $3
+         WHERE id = $4`,
+        [
+          roomNumber,
+          floor,
+          input.active === undefined ? current.active : bool(input.active),
+          Number(id)
+        ]
+      );
+      return (await this.listRooms()).find((room) => room.id === Number(id));
+    },
+
+    async deleteRoom(id) {
+      return (await pool.query('DELETE FROM rooms WHERE id = $1', [Number(id)])).rowCount;
     },
 
     async listCategories(includeInactive = false) {
@@ -716,14 +1232,7 @@ export async function createPostgresRepository(
         if (existing) return hydrateOrder(existing);
       }
 
-      const tableNumber = Number(input.tableNumber ?? input.table);
-      const table = (
-        await pool.query(
-          'SELECT * FROM tables WHERE number = $1 AND active = TRUE',
-          [tableNumber]
-        )
-      ).rows[0];
-      const floor = table ? table.floor : deriveFloor(tableNumber);
+      const location = await resolveLocation(input);
 
       const requestedItems = Array.isArray(input.items) ? input.items : [];
       if (!requestedItems.length) {
@@ -747,6 +1256,7 @@ export async function createPostgresRepository(
           name: parseJson(item.name_json),
           unitPrice: item.price,
           quantity,
+          note: requireText(requested.note, ''),
           lineTotal: item.price * quantity
         });
       }
@@ -761,12 +1271,16 @@ export async function createPostgresRepository(
         await client.query('BEGIN');
         const orderInfo = await client.query(
           `INSERT INTO orders
-             (table_number, floor, status, notes, total, idempotency_key, created_at, updated_at)
-           VALUES ($1, $2, 'received', $3, $4, $5, $6, $7)
+             (table_number, floor, location_type, location_id, room_number, status, notes,
+              total, idempotency_key, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, 'received', $6, $7, $8, $9, $10)
            RETURNING id`,
           [
-            tableNumber,
-            floor,
+            location.tableNumber,
+            location.floor,
+            location.type,
+            location.internalId,
+            location.roomNumber,
             requireText(input.notes, ''),
             total,
             idempotencyKey || null,
@@ -778,9 +1292,17 @@ export async function createPostgresRepository(
         for (const s of snapshots) {
           await client.query(
             `INSERT INTO order_items
-               (order_id, menu_item_id, name_json, unit_price, quantity, line_total)
-             VALUES ($1, $2, $3, $4, $5, $6)`,
-            [orderInfo.rows[0].id, s.menuItemId, json(s.name), s.unitPrice, s.quantity, s.lineTotal]
+               (order_id, menu_item_id, name_json, unit_price, quantity, note, line_total)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [
+              orderInfo.rows[0].id,
+              s.menuItemId,
+              json(s.name),
+              s.unitPrice,
+              s.quantity,
+              s.note,
+              s.lineTotal
+            ]
           );
         }
 
@@ -859,6 +1381,18 @@ export async function createPostgresRepository(
       return getOrder(id);
     },
 
+    async updateOrderNotes(id, notes) {
+      const current = (
+        await pool.query('SELECT * FROM orders WHERE id = $1', [Number(id)])
+      ).rows[0];
+      if (!current) return null;
+      await pool.query(
+        'UPDATE orders SET notes = $1, updated_at = $2 WHERE id = $3',
+        [notes || '', nowIso(), Number(id)]
+      );
+      return getOrder(id);
+    },
+
     async submitOrderFeedback(orderId, input) {
       const order = await getOrder(orderId);
       if (!order) return null;
@@ -931,16 +1465,24 @@ export async function createPostgresRepository(
     },
 
     async createServiceNotification(input) {
-      const tableNumber = Number(input.tableNumber ?? input.table);
+      const location = await resolveLocation(input);
       const type = input.type === 'request-bill' ? 'request-bill' : 'call-waiter';
-      const floor = deriveFloor(tableNumber);
       return (
         await pool.query(
           `INSERT INTO service_notifications
-             (type, table_number, floor, status, created_at)
-           VALUES ($1, $2, $3, 'open', $4)
+             (type, table_number, floor, location_type, location_id, room_number, reason, status, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, 'open', $8)
            RETURNING *`,
-          [type, tableNumber, floor, nowIso()]
+          [
+            type,
+            location.tableNumber,
+            location.floor,
+            location.type,
+            location.internalId,
+            location.roomNumber,
+            requireText(input.note ?? input.reason, ''),
+            nowIso()
+          ]
         )
       ).rows[0];
     },
@@ -974,6 +1516,71 @@ export async function createPostgresRepository(
         [nowIso(), Number(id)]
       );
       return mapNotification(result.rows[0]);
+    },
+
+    async listStaffMembers() {
+      return (
+        await pool.query(
+          `SELECT * FROM staff_members
+           WHERE active = TRUE
+           ORDER BY
+             CASE WHEN role = 'Kitchen' THEN 999 ELSE COALESCE(assigned_floor, 998) END,
+             role,
+             name`
+        )
+      ).rows.map(mapStaffMember);
+    },
+
+    async createManagerNotification(input) {
+      const staffName = requireText(input.staffName ?? input.name, '');
+      const staffRole = requireText(input.staffRole ?? input.role, 'Staff');
+      if (!staffName) {
+        throw new Error('Staff name is required');
+      }
+      const assignedFloor = numberOrNull(input.assignedFloor ?? input.floor);
+      const result = await pool.query(
+        `INSERT INTO manager_notifications
+           (staff_name, staff_role, assigned_floor, reason, status, created_at)
+         VALUES ($1, $2, $3, $4, 'open', $5)
+         RETURNING *`,
+        [
+          staffName,
+          staffRole,
+          assignedFloor,
+          requireText(input.reason, ''),
+          nowIso()
+        ]
+      );
+      return mapManagerNotification(result.rows[0]);
+    },
+
+    async listManagerNotifications(filters = {}) {
+      const where = [];
+      const params = [];
+      if (filters.status) {
+        params.push(filters.status);
+        where.push(`status = $${params.length}`);
+      }
+      const sql = `
+        SELECT * FROM manager_notifications
+        ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+        ORDER BY created_at DESC, id DESC
+      `;
+      return (await pool.query(sql, params)).rows.map(mapManagerNotification);
+    },
+
+    async resolveManagerNotification(id) {
+      const row = (
+        await pool.query('SELECT * FROM manager_notifications WHERE id = $1', [
+          Number(id)
+        ])
+      ).rows[0];
+      if (!row) return null;
+      const result = await pool.query(
+        "UPDATE manager_notifications SET status = 'resolved', resolved_at = $1 WHERE id = $2 RETURNING *",
+        [nowIso(), Number(id)]
+      );
+      return mapManagerNotification(result.rows[0]);
     },
 
     async todayReport() {
@@ -1036,6 +1643,56 @@ export async function createPostgresRepository(
         ]
       );
       return mapAsset(result.rows[0]);
+    },
+
+    async createStaffMember(input) {
+      const name = requireText(input.name, '');
+      const role = requireText(input.role, 'Staff');
+      if (!name) throw new Error('Staff name is required');
+      const result = await pool.query(
+        `INSERT INTO staff_members (name, role, assigned_floor, online, active)
+         VALUES ($1, $2, $3, $4, true)
+         RETURNING *`,
+        [name, role, numberOrNull(input.assignedFloor), bool(input.online ?? false)]
+      );
+      return mapStaffMember(result.rows[0]);
+    },
+
+    async updateStaffMember(id, input) {
+      const current = (
+        await pool.query('SELECT * FROM staff_members WHERE id = $1', [Number(id)])
+      ).rows[0];
+      if (!current) return null;
+      const result = await pool.query(
+        `UPDATE staff_members
+         SET name = $1, role = $2, assigned_floor = $3, online = $4
+         WHERE id = $5
+         RETURNING *`,
+        [
+          requireText(input.name, current.name),
+          requireText(input.role, current.role),
+          numberOrNull(input.assignedFloor ?? current.assigned_floor),
+          input.online !== undefined ? bool(input.online) : current.online,
+          Number(id)
+        ]
+      );
+      return mapStaffMember(result.rows[0]);
+    },
+
+    async deleteStaffMember(id) {
+      const result = await pool.query(
+        'UPDATE staff_members SET active = false WHERE id = $1',
+        [Number(id)]
+      );
+      return result.rowCount;
+    },
+
+    async setStaffOnline(id, online) {
+      const result = await pool.query(
+        'UPDATE staff_members SET online = $1 WHERE id = $2 RETURNING *',
+        [bool(online), Number(id)]
+      );
+      return result.rows[0] ? mapStaffMember(result.rows[0]) : null;
     }
   };
 }

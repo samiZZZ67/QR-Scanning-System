@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { createElement, isValidElement } from "react";
 import LoadingSpinner from "./LoadingSpinner.jsx";
 
 const VARIANTS = {
@@ -14,6 +15,24 @@ const SIZES = {
   md: "text-sm px-4 py-2   gap-2",
   lg: "text-base px-6 py-3 gap-2",
 };
+
+const ICON_SIZES = {
+  sm: 14,
+  md: 16,
+  lg: 18,
+};
+
+function renderIcon(icon, size) {
+  if (!icon) return null;
+  if (isValidElement(icon)) return icon;
+  if (typeof icon === "function" || typeof icon === "object") {
+    return createElement(icon, {
+      size: ICON_SIZES[size] ?? ICON_SIZES.md,
+      "aria-hidden": true,
+    });
+  }
+  return icon;
+}
 
 /**
  * Button — brand-styled, animated button.
@@ -49,7 +68,7 @@ export default function Button({
       {...rest}
     >
       {loading && <LoadingSpinner size="sm" className="text-current" />}
-      {!loading && icon}
+      {!loading && renderIcon(icon, size)}
       {children}
     </motion.button>
   );

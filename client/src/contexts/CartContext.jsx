@@ -18,29 +18,45 @@ export function CartProvider({ children }) {
     localStorage.setItem("hgh_cart", JSON.stringify(items));
   }, [items]);
 
-  function addItem(item, qty = 1) {
+  function addItem(item, qty = 1, note = "") {
     setItems((prev) => {
-      const id = item.id || item._id;
-      const idx = prev.findIndex((i) => i.id === id);
+      const id = item.id || item._id || item.menuItemId;
+      const idx = prev.findIndex((i) => i.id === id && i.note === note);
       if (idx >= 0) {
         const next = [...prev];
         next[idx] = { ...next[idx], qty: next[idx].qty + qty };
         return next;
       }
-      return [...prev, { ...item, id, qty }];
+      return [...prev, { 
+        ...item, 
+        id, 
+        name: item.name, 
+        price: item.price, 
+        imageUrl: item.imageUrl || item.image,
+        qty, 
+        note: note || "" 
+      }];
     });
   }
 
-  function removeItem(id) {
-    setItems((prev) => prev.filter((i) => i.id !== id));
+  function removeItem(id, note = "") {
+    setItems((prev) => prev.filter((i) => !(i.id === id && i.note === note)));
   }
 
-  function updateQty(id, qty) {
+  function updateQty(id, qty, note = "") {
     if (qty <= 0) {
-      removeItem(id);
+      removeItem(id, note);
       return;
     }
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, qty } : i)));
+    setItems((prev) => prev.map((i) => 
+      (i.id === id && i.note === note) ? { ...i, qty } : i
+    ));
+  }
+
+  function updateNote(id, newNote, oldNote = "") {
+    setItems((prev) => prev.map((i) => 
+      (i.id === id && i.note === oldNote) ? { ...i, note: newNote } : i
+    ));
   }
 
   function clearCart() {
@@ -60,6 +76,7 @@ export function CartProvider({ children }) {
         addItem,
         removeItem,
         updateQty,
+        updateNote,
         clearCart,
         totalItems,
         totalPrice,

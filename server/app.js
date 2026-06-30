@@ -16,8 +16,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export function createApp({ repository, io = null } = {}) {
   const app = express();
 
-  // Trust reverse-proxy headers (X-Forwarded-For, X-Forwarded-Proto)
-  app.set("trust proxy", true);
+  // Trust only the first reverse proxy in production.
+  app.set("trust proxy", config.nodeEnv === "production" ? 1 : false);
   app.disable("x-powered-by");
 
   // ── Security headers ────────────────────────────────────────────────────────

@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, Phone, FileText } from 'lucide-react';
 import CustomerLayout from '../../layouts/CustomerLayout.jsx';
 import { useMenu } from '../../hooks/useMenu.js';
 import { useCart } from '../../contexts/CartContext.jsx';
 import { useRealtime } from '../../hooks/useRealtime.js';
 import { placeOrder, getOrder } from '../../api/orders.js';
+import { createServiceNotification } from '../../api/notifications.js';
 import { randomIdempotencyKey, formatMoney } from '../../utils/formatting.js';
 import LoadingSpinner from '../../components/ui/LoadingSpinner.jsx';
 import { MenuGridSkeleton } from '../../components/ui/Skeleton.jsx';
@@ -15,6 +16,7 @@ import DishCard from '../../components/menu/DishCard.jsx';
 import { CategoryFilter } from '../../components/menu/CategoryFilter.jsx';
 import { SearchBar } from '../../components/menu/SearchBar.jsx';
 import { CartDrawer } from '../../components/menu/CartDrawer.jsx';
+import ItemModal from '../../components/menu/ItemModal.jsx';
 import { OrderStatus } from '../../components/order/OrderStatus.jsx';
 import { FeedbackForm } from '../../components/order/FeedbackForm.jsx';
 
@@ -28,9 +30,12 @@ export default function CustomerPage() {
   const [activeCategory, setActiveCategory] = useState(null);
   const [showCart, setShowCart] = useState(false);
   const [ordering, setOrdering] = useState(false);
+  const [requestingService, setRequestingService] = useState(false);
+  const [serviceStatus, setServiceStatus] = useState('none'); // 'none', 'call-waiter', 'request-bill'
   const [phase, setPhase] = useState('browse'); // browse | tracking | feedback
   const [currentOrder, setCurrentOrder] = useState(null);
   const [notice, setNotice] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null);
 
   useEffect(() => {
     document.title = `Menu — Table ${tableNumber} | Habesha Grand Hotel`;
@@ -59,8 +64,16 @@ export default function CustomerPage() {
     }
   }, [currentOrder]);
 
+  const handleServiceResolved = useCallback((notification) => {
+    if (notification.table_number === Number(tableNumber) || notification.tableNumber === Number(tableNumber)) {
+      setServiceStatus('none');
+      setNotice({ type: 'success', message: 'Waiter has attended your request.' });
+    }
+  }, [tableNumber]);
+
   useRealtime({ room: `table-${tableNumber}` }, {
     'order.statusChanged': handleOrderUpdate,
+    'serviceNotification.resolved': handleServiceResolved,
   });
 
   async function handlePlaceOrder() {
@@ -69,7 +82,11 @@ export default function CustomerPage() {
     try {
       const order = await placeOrder({
         tableNumber: Number(tableNumber),
-        items: cart.items.map((i) => ({ menuItemId: i.id, quantity: i.qty })),
+        items: cart.items.map((i) => ({ 
+          menuItemId: i.id, 
+          quantity: i.qty,
+          note: i.note || ''
+        })),
         idempotencyKey: randomIdempotencyKey(),
       });
       cart.clearCart();
@@ -81,6 +98,40 @@ export default function CustomerPage() {
       setNotice({ type: 'error', message: err.message });
     } finally {
       setOrdering(false);
+    }
+  }
+
+  async function handleCallWaiter() {
+    if (serviceStatus === 'call-waiter') return;
+    setRequestingService(true);
+    try {
+      await createServiceNotification({
+        type: 'call-waiter',
+        tableNumber: Number(tableNumber)
+      });
+      setServiceStatus('call-waiter');
+      setNotice({ type: 'success', message: 'Waiter called! They will be with you shortly.' });
+    } catch (err) {
+      setNotice({ type: 'error', message: err.message || 'Failed to call waiter.' });
+    } finally {
+      setRequestingService(false);
+    }
+  }
+
+  async function handleRequestBill() {
+    if (serviceStatus === 'request-bill') return;
+    setRequestingService(true);
+    try {
+      await createServiceNotification({
+        type: 'request-bill',
+        tableNumber: Number(tableNumber)
+      });
+      setServiceStatus('request-bill');
+      setNotice({ type: 'success', message: 'Bill requested! Waiter will bring it shortly.' });
+    } catch (err) {
+      setNotice({ type: 'error', message: err.message || 'Failed to request bill.' });
+    } finally {
+      setRequestingService(false);
     }
   }
 
@@ -188,6 +239,7 @@ export default function CustomerPage() {
                   <DishCard
                     key={item.id}
                     item={item}
+                    onCardClick={setSelectedItem}
                     onAddToCart={() =>
                       cart.addItem({
                         id: item.id,
@@ -240,6 +292,28 @@ export default function CustomerPage() {
               </div>
             </div>
 
+            {/* Service Request Buttons */}
+            <div className="grid grid-cols-2 gap-3">
+              <Button 
+                variant={serviceStatus === 'call-waiter' ? 'primary' : 'outline'}
+                size="md" 
+                icon={<Phone size={16} />}
+                onClick={handleCallWaiter}
+                disabled={requestingService || serviceStatus === 'call-waiter'}
+              >
+                {serviceStatus === 'call-waiter' ? 'Waiter Notified' : 'Call Waiter'}
+              </Button>
+              <Button 
+                variant={serviceStatus === 'request-bill' ? 'primary' : 'outline'}
+                size="md" 
+                icon={<FileText size={16} />}
+                onClick={handleRequestBill}
+                disabled={requestingService || serviceStatus === 'request-bill'}
+              >
+                {serviceStatus === 'request-bill' ? 'Bill Requested' : 'Request Bill'}
+              </Button>
+            </div>
+
             <Button variant="outline" size="md" onClick={() => { setPhase('browse'); setCurrentOrder(null); }}>
               Browse Menu Again
             </Button>
@@ -285,6 +359,12 @@ export default function CustomerPage() {
           </span>
         </motion.button>
       )}
+      {/* Item Modal */}
+      <ItemModal
+        item={selectedItem}
+        isOpen={!!selectedItem}
+        onClose={() => setSelectedItem(null)}
+      />
     </CustomerLayout>
   );
 }

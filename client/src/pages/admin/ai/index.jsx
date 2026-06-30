@@ -49,7 +49,7 @@ export default function AITab() {
     setTextResult('');
 
     try {
-      const data = await api('/ai/grok', {
+      const data = await api('/ai/groq', {
         method: 'POST',
         body: {
           task,
@@ -78,7 +78,7 @@ export default function AITab() {
     setRevisedPrompt('');
 
     try {
-      const data = await api('/ai/grok/image', {
+      const data = await api('/ai/groq/image', {
         method: 'POST',
         body: {
           prompt: imagePrompt.trim()
@@ -98,7 +98,7 @@ export default function AITab() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="font-display text-2xl font-bold text-rough">Grok AI Assistant</h2>
+          <h2 className="font-display text-2xl font-bold text-rough">Groq AI Assistant</h2>
           <p className="text-sm text-gold-muted mt-1">Generate high-quality menu copy, translate listings, or design food graphics.</p>
         </div>
         <div className="flex bg-surface p-1 rounded-xl border border-gold-muted/30">
@@ -207,7 +207,7 @@ export default function AITab() {
                     value={promptInput}
                     onChange={(e) => setPromptInput(e.target.value)}
                     required
-                    placeholder="Enter what you want Grok to translate, improve, or write..."
+                    placeholder="Enter what you want Groq to translate, improve, or write..."
                     rows={6}
                     className="w-full bg-surface border border-gold-muted px-4 py-3 rounded-xl text-sm text-rough focus:outline-none focus:border-gold resize-none"
                   />
@@ -226,7 +226,7 @@ export default function AITab() {
               <Card ref={resultRef} className="p-5 border-l-4 border-l-gold bg-pale-light/50 space-y-3">
                 <div className="flex items-center gap-2 text-gold font-semibold text-sm">
                   <Bot size={18} />
-                  Grok Suggested Output
+                  Groq Suggested Output
                 </div>
                 <div className="text-sm text-rough font-sans leading-relaxed whitespace-pre-line bg-surface p-4 rounded-xl border border-gold-muted/20 select-all">
                   {textResult}
@@ -269,7 +269,7 @@ export default function AITab() {
           <div className="lg:col-span-2">
             {loadingImage ? (
               <Card className="flex flex-col items-center justify-center py-24 text-center">
-                <LoadingSpinner size="lg" text="Grok is rendering your food graphic..." />
+                <LoadingSpinner size="lg" text="Groq is rendering your food graphic..." />
               </Card>
             ) : generatedImageUrl ? (
               <Card className="p-5 space-y-4">
@@ -280,7 +280,7 @@ export default function AITab() {
                 <div className="rounded-xl overflow-hidden aspect-video border border-gold-muted/30 max-w-xl mx-auto shadow-sm bg-pale">
                   <img
                     src={generatedImageUrl}
-                    alt="Grok Food Generation"
+                    alt="Groq Food Generation"
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -305,7 +305,7 @@ export default function AITab() {
               <Card className="flex flex-col items-center justify-center py-24 text-center text-gold-muted">
                 <ImageIcon size={48} className="text-gold-muted/30 mb-2" />
                 <p className="font-display font-medium text-rough text-lg">No Graphic Generated Yet</p>
-                <p className="text-sm">Enter a graphic prompt on the left to invoke Grok image generator.</p>
+                <p className="text-sm">Enter a graphic prompt on the left to invoke Groq image generator.</p>
               </Card>
             )}
           </div>
