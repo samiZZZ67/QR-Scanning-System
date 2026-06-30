@@ -7,11 +7,6 @@ import "./i18n.js";
 import "./index.css";
 import App from "./App.jsx";
 
-const redirectedPath = new URLSearchParams(window.location.search).get("redirect");
-if (redirectedPath?.startsWith("/")) {
-  window.history.replaceState(null, "", redirectedPath);
-}
-
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <ToastProvider>

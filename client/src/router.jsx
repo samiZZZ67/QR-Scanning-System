@@ -1,5 +1,5 @@
 import { lazy } from "react";
-import { createBrowserRouter, Navigate } from "react-router-dom";
+import { createBrowserRouter, Navigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 
 const HomePage = lazy(() => import("./pages/home/index.jsx"));
@@ -19,6 +19,14 @@ const pageMotion = {
 
 function PageWrapper({ children }) {
   return <motion.div {...pageMotion}>{children}</motion.div>;
+}
+
+function RestoreStaticRoute() {
+  const [searchParams] = useSearchParams();
+  const redirect = searchParams.get("redirect");
+  const target = redirect?.startsWith("/") ? redirect : "/";
+
+  return <Navigate to={target} replace />;
 }
 
 export const router = createBrowserRouter([
@@ -80,6 +88,6 @@ export const router = createBrowserRouter([
   },
   {
     path: "*",
-    element: <Navigate to="/" replace />,
+    element: <RestoreStaticRoute />,
   },
 ]);
