@@ -1,12 +1,13 @@
 import { useEffect, useRef } from "react";
 import { io } from "socket.io-client";
+import { API_BASE } from "../api/client.js";
 
 // One shared socket for the whole app session
 let _socket = null;
 
 function getSocket() {
   if (!_socket) {
-    _socket = io({ path: "/socket.io", autoConnect: true });
+    _socket = io(API_BASE || undefined, { path: "/socket.io", autoConnect: true });
   }
   return _socket;
 }

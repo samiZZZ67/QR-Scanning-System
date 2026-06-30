@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { MapPin, Phone, Mail, Clock, Send } from 'lucide-react';
 import PublicLayout from '../../layouts/PublicLayout.jsx';
 import Button from '../../components/ui/Button.jsx';
+import { apiUrl } from '../../api/client.js';
 
 const INFO = [
   { Icon: MapPin, label: 'Address', value: 'Bole Road, Addis Ababa, Ethiopia' },
@@ -34,7 +35,7 @@ export default function ContactPage() {
     setStatus('loading');
     setErrorMsg('');
     try {
-      const res = await fetch('/api/contact', {
+      const res = await fetch(apiUrl('/contact'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
