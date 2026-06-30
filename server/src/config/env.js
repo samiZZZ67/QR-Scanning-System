@@ -44,8 +44,8 @@ const config = Object.freeze({
   }),
 
   groq: Object.freeze({
-    apiKey: process.env.GROQ_API_KEY || process.env.XAI_API_KEY || '',
-    textModel: process.env.GROQ_MODEL || 'groq-4-latest',
+    apiKey: process.env.GROQ_API_KEY || '',
+    textModel: process.env.GROQ_MODEL || 'openai/gpt-oss-20b',
     imageModel: process.env.GROQ_IMAGE_MODEL || 'groq-2-image-latest'
   }),
 

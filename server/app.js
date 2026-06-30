@@ -71,14 +71,6 @@ export function createApp({ repository, io = null } = {}) {
 
   // ── API routes ───────────────────────────────────────────────────────────────
   app.use("/api", apiLimiter, apiRoutes);
-
-  // ── Serve built React client in production ───────────────────────────────────
-  const distDir = join(__dirname, "..", "client", "dist");
-  if (existsSync(distDir)) {
-    app.use(express.static(distDir));
-    app.get(/.*/, (req, res) => res.sendFile(join(distDir, "index.html")));
-  }
-
   // ── Global error handler ─────────────────────────────────────────────────────
   app.use(errorHandler);
 

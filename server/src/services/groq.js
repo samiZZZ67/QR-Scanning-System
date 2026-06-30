@@ -1,6 +1,6 @@
 import config from '../config/env.js';
 
-const GROQ_BASE_URL = process.env.GROQ_API_BASE_URL || 'https://api.x.ai/v1';
+const GROQ_BASE_URL = process.env.GROQ_API_BASE_URL || 'https://api.groq.com/openai/v1';
 
 const TASK_PROMPTS = {
   translate:
