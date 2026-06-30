@@ -172,6 +172,10 @@ Important server variables:
 - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` — optional cloud image storage
 - `GROQ_API_KEY` or `XAI_API_KEY` — Groq AI access
 
+Important client variable:
+
+- `VITE_API_BASE_URL` — the deployed backend base URL used by the React app
+
 ### Run locally
 
 From the root directory:

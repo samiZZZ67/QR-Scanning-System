@@ -15,6 +15,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export function createApp({ repository, io = null } = {}) {
   const app = express();
+  const frontendBaseUrl = config.publicBaseUrl?.replace(/\/$/, "");
 
   // Trust only the first reverse proxy in production.
   app.set("trust proxy", config.nodeEnv === "production" ? 1 : false);
@@ -71,6 +72,24 @@ export function createApp({ repository, io = null } = {}) {
 
   // ── API routes ───────────────────────────────────────────────────────────────
   app.use("/api", apiLimiter, apiRoutes);
+
+  // ── Serve built React client in production ───────────────────────────────────
+  const distDir = join(__dirname, "..", "client", "dist");
+  if (existsSync(distDir)) {
+    app.use(express.static(distDir));
+    app.get(/.*/, (req, res) => res.sendFile(join(distDir, "index.html")));
+  } else if (config.nodeEnv === "production" && frontendBaseUrl) {
+    // In split deployments, send browser routes to the separately hosted frontend.
+    app.use((req, res, next) => {
+      if (req.method !== "GET" && req.method !== "HEAD") return next();
+      if (req.path.startsWith("/api") || req.path.startsWith("/locales")) {
+        return next();
+      }
+
+      return res.redirect(302, new URL(req.originalUrl, frontendBaseUrl).toString());
+    });
+  }
+
   // ── Global error handler ─────────────────────────────────────────────────────
   app.use(errorHandler);
 

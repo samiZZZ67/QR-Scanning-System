@@ -29,7 +29,10 @@ const config = Object.freeze({
     'dev-only-session-secret-change-me-before-production',
   sessionTtlMinutes: Number(process.env.SESSION_TTL_MINUTES || 8 * 60),
 
-  publicBaseUrl: process.env.PUBLIC_BASE_URL || 'http://localhost:5173',
+  publicBaseUrl:
+    process.env.PUBLIC_BASE_URL ||
+    process.env.FRONTEND_URL ||
+    'http://localhost:5173',
 
   cloudinary: Object.freeze({
     cloudName: process.env.CLOUDINARY_CLOUD_NAME || '',
