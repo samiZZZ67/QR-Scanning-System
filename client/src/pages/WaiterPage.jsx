@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bell, CheckCircle2, RefreshCw, Phone, FileText } from 'lucide-react';
+import { Bell, CheckCircle2, RefreshCw, Phone, FileText, ChefHat } from 'lucide-react';
 import { useOrders } from '../hooks/useOrders.js';
 import { useRealtime } from '../hooks/useRealtime.js';
 import { updateOrderStatus } from '../api/orders.js';
@@ -18,12 +18,24 @@ function itemName(item) {
 export default function WaiterPage() {
   const { orders, setOrders, loading, error, refresh } = useOrders({ status: 'ready' });
   const [notifications, setNotifications] = useState([]);
+  const [kitchenCalls, setKitchenCalls] = useState([]);   // kitchen-initiated calls
   const [notice, setNotice] = useState(null);
   const [delivering, setDelivering] = useState(null);
 
+  // Load open service notifications on mount
   useEffect(() => {
     listServiceNotifications({ status: 'open' })
-      .then(setNotifications)
+      .then((data) => {
+        // Separate kitchen calls from regular service requests
+        const kitchenItems = (data || []).filter(
+          (n) => n.type === 'call-waiter' && n.locationType === 'kitchen'
+        );
+        const regularItems = (data || []).filter(
+          (n) => !(n.type === 'call-waiter' && n.locationType === 'kitchen')
+        );
+        setKitchenCalls(kitchenItems);
+        setNotifications(regularItems);
+      })
       .catch(() => {});
   }, []);
 
@@ -38,12 +50,26 @@ export default function WaiterPage() {
   }, [setOrders]);
 
   const handleServiceRequest = useCallback((notification) => {
+    // Regular service request (call-waiter from table, or request-bill)
+    if (notification.type === 'call-waiter' && notification.locationType === 'kitchen') {
+      // Kitchen calls land in kitchenCalls via kitchenCallWaiter event — ignore here
+      return;
+    }
     setNotifications((prev) => [notification, ...prev]);
+  }, []);
+
+  const handleKitchenCall = useCallback((notification) => {
+    setKitchenCalls((prev) => {
+      const exists = prev.some((n) => n.id === notification.id);
+      if (exists) return prev;
+      return [notification, ...prev];
+    });
   }, []);
 
   useRealtime({ role: 'waiter' }, {
     'order.statusChanged': handleOrderChange,
     'serviceNotification.created': handleServiceRequest,
+    'kitchenCallWaiter': handleKitchenCall,
   });
 
   async function markDelivered(order) {
@@ -68,6 +94,16 @@ export default function WaiterPage() {
     }
   }
 
+  async function acknowledgeKitchenCall(id) {
+    try {
+      await resolveServiceNotification(id);
+      setKitchenCalls((prev) => prev.filter((item) => item.id !== id));
+      setNotice({ type: 'success', message: 'Kitchen call acknowledged.' });
+    } catch (err) {
+      setNotice({ type: 'error', message: err.message || 'Failed to acknowledge.' });
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -83,6 +119,54 @@ export default function WaiterPage() {
       {notice && <Notice type={notice.type} message={notice.message} onDismiss={() => setNotice(null)} />}
       {error && <Notice type="error" message={error} />}
 
+      {/* ── Kitchen calls ────────────────────────────────────────────────── */}
+      {kitchenCalls.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="font-display font-semibold text-rough flex items-center gap-2">
+            <ChefHat size={16} className="text-orange-500" aria-hidden="true" />
+            Kitchen Calls ({kitchenCalls.length})
+          </h2>
+          <AnimatePresence>
+            {kitchenCalls.map((call) => (
+              <motion.div
+                key={call.id}
+                layout
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, x: 40 }}
+                className="bg-orange-50 border border-orange-200 rounded-lg p-4 flex items-center justify-between gap-4"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-orange-100 rounded shrink-0">
+                    <ChefHat size={16} className="text-orange-700" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-orange-900 text-sm">
+                      Kitchen is calling
+                      {call.targetWaiterName && (
+                        <span className="ml-1 font-normal text-orange-700">→ {call.targetWaiterName}</span>
+                      )}
+                    </p>
+                    <p className="text-xs text-orange-700 mt-0.5">
+                      {call.note || call.reason || 'Food is ready for pickup'}
+                    </p>
+                    <p className="text-xs text-orange-500 mt-0.5">{formatTime(call.createdAt)}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => acknowledgeKitchenCall(call.id)}
+                  className="shrink-0 flex items-center gap-1.5 text-xs font-medium text-green-700 hover:text-green-900 transition-colors px-2 py-1 rounded hover:bg-green-50"
+                >
+                  <CheckCircle2 size={14} />
+                  Done
+                </button>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </section>
+      )}
+
+      {/* ── Customer service requests (call waiter / bill) ───────────────── */}
       {notifications.length > 0 && (
         <section className="space-y-2">
           <h2 className="font-display font-semibold text-rough flex items-center gap-2">
@@ -91,8 +175,8 @@ export default function WaiterPage() {
           </h2>
           {notifications.map((notification) => {
             const isWaiterCall = notification.type === 'call-waiter';
-            const icon = isWaiterCall ? Phone : FileText;
             const label = isWaiterCall ? 'Waiter Called' : 'Bill Requested';
+            const Icon = isWaiterCall ? Phone : FileText;
             return (
               <div
                 key={notification.id}
@@ -100,11 +184,7 @@ export default function WaiterPage() {
               >
                 <div className="flex items-start gap-3">
                   <div className="p-2 bg-amber-100 rounded">
-                    {icon === Phone ? (
-                      <Phone size={16} className="text-amber-900" />
-                    ) : (
-                      <FileText size={16} className="text-amber-900" />
-                    )}
+                    <Icon size={16} className="text-amber-900" />
                   </div>
                   <div>
                     <p className="font-medium text-amber-900 text-sm">Table {notification.tableNumber}</p>
@@ -120,6 +200,7 @@ export default function WaiterPage() {
         </section>
       )}
 
+      {/* ── Ready to deliver ─────────────────────────────────────────────── */}
       <section>
         <h2 className="font-display font-semibold text-rough mb-3">Ready to Deliver</h2>
         {loading ? (

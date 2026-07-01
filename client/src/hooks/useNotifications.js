@@ -92,7 +92,12 @@ export function useNotifications() {
     'serviceNotification.resolved': handleResolved,
   });
 
+  // Total unread across all notification types
   const unreadCount = notifications.filter((n) => !seenIds.has(n.id)).length;
+  // Badge on the bell — only counts unread manager calls
+  const managerUnreadCount = notifications.filter(
+    (n) => !seenIds.has(n.id) && !!n.staffName
+  ).length;
 
   function markAllSeen() {
     setSeenIds(new Set(notifications.map((n) => n.id)));
@@ -109,6 +114,7 @@ export function useNotifications() {
   return {
     notifications,
     unreadCount,
+    managerUnreadCount,
     loading,
     markAllSeen,
     soundEnabled,

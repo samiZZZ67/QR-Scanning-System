@@ -10,7 +10,22 @@ export const createNotification = asyncHandler(async (req, res) => {
   // Re-fetch the mapped notification (SQLite returns the raw row)
   const notifications = await repository.listServiceNotifications();
   const notification = notifications.find((n) => n.id === row.id) || row;
+
+  // Broadcast to all admin/waiter connections
   if (io) io.emit('serviceNotification.created', notification);
+
+  // If a specific waiter was targeted by the kitchen, emit a dedicated event
+  // to the waiter room so WaiterPage can distinguish it
+  const targetWaiterName = req.body?.targetWaiterName;
+  const targetWaiterId = req.body?.targetWaiterId;
+  if (io && targetWaiterName) {
+    io.to('role:waiter').emit('kitchenCallWaiter', {
+      ...notification,
+      targetWaiterName,
+      targetWaiterId: targetWaiterId ? Number(targetWaiterId) : null,
+    });
+  }
+
   res.status(201).json(notification);
 });
 

@@ -15,6 +15,7 @@ export function AdminLayout({ children, activeTab, onTabChange, tabs = [] }) {
   const {
     notifications,
     unreadCount,
+    managerUnreadCount,
     loading: notifLoading,
     markAllSeen,
     soundEnabled,
@@ -52,7 +53,7 @@ export function AdminLayout({ children, activeTab, onTabChange, tabs = [] }) {
               <button
                 id="notification-bell"
                 onClick={() => setBellOpen((v) => !v)}
-                aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
+                aria-label={`Notifications${managerUnreadCount > 0 ? `, ${managerUnreadCount} unread manager call${managerUnreadCount > 1 ? 's' : ''}` : ''}`}
                 aria-haspopup="dialog"
                 aria-expanded={bellOpen}
                 className={[
@@ -63,7 +64,7 @@ export function AdminLayout({ children, activeTab, onTabChange, tabs = [] }) {
                 ].join(' ')}
               >
                 <AnimatePresence mode="wait">
-                  {unreadCount > 0 ? (
+                  {managerUnreadCount > 0 ? (
                     <motion.span
                       key="ring"
                       initial={{ rotate: -20 }}
@@ -79,9 +80,9 @@ export function AdminLayout({ children, activeTab, onTabChange, tabs = [] }) {
                   )}
                 </AnimatePresence>
 
-                {/* Badge */}
+                {/* Badge — only for unread manager calls */}
                 <AnimatePresence>
-                  {unreadCount > 0 && (
+                  {managerUnreadCount > 0 && (
                     <motion.span
                       key="badge"
                       initial={{ scale: 0 }}
@@ -91,7 +92,7 @@ export function AdminLayout({ children, activeTab, onTabChange, tabs = [] }) {
                       className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full px-1 shadow"
                       aria-hidden="true"
                     >
-                      {unreadCount > 99 ? '99+' : unreadCount}
+                      {managerUnreadCount > 99 ? '99+' : managerUnreadCount}
                     </motion.span>
                   )}
                 </AnimatePresence>
@@ -128,7 +129,7 @@ export function AdminLayout({ children, activeTab, onTabChange, tabs = [] }) {
             activeTab={activeTab}
             onTabChange={onTabChange}
             tabs={tabs}
-            unreadCount={unreadCount}
+            unreadCount={managerUnreadCount}
           />
         </div>
 
