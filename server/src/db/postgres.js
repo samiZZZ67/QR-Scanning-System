@@ -48,6 +48,12 @@ function buildQrUrl(internalId, fallbackParam = {}) {
     const url = new URL('/order', config.publicBaseUrl);
     if (internalId) {
       url.searchParams.set('id', internalId);
+      // Also include fallback params where available (e.g., table or room)
+      for (const [key, value] of Object.entries(fallbackParam)) {
+        if (value !== undefined && value !== null && value !== '') {
+          url.searchParams.set(key, String(value));
+        }
+      }
     } else {
       for (const [key, value] of Object.entries(fallbackParam)) {
         if (value !== undefined && value !== null && value !== '') {

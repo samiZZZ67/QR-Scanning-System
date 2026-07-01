@@ -1,81 +1,73 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, Send, X, Minimize2, Maximize2, Sparkles, RotateCcw } from 'lucide-react';
-import { api } from '../../api/client.js';
+import React, { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Bot,
+  Send,
+  X,
+  Minimize2,
+  Maximize2,
+  Sparkles,
+  RotateCcw,
+} from "lucide-react";
+import { api } from "../../api/client.js";
 
 const TAB_CONTEXT = {
-  dashboard: 'the admin dashboard showing today\'s revenue, order counts, and analytics.',
-  menu: 'the menu items management section for adding or editing food items.',
-  categories: 'the menu categories section for organizing food categories.',
-  floors: 'the floors management section.',
-  tables: 'the tables and QR code management section.',
-  rooms: 'the rooms management section.',
-  staff: 'the staff management section for managing hotel employees.',
-  manager: 'the manager calls section showing staff escalations.',
-  orders: 'the orders log section for monitoring and updating order statuses.',
-  feedback: 'the customer feedback and reviews section.',
-  assets: 'the assets management section for hotel media and branding.',
-  ai: 'the AI assistant tab for generating menu copy and food graphics.',
+  dashboard:
+    "the admin dashboard showing today's revenue, order counts, and analytics.",
+  menu: "the menu items management section for adding or editing food items.",
+  categories: "the menu categories section for organizing food categories.",
+  floors: "the floors management section.",
+  tables: "the tables and QR code management section.",
+  rooms: "the rooms management section.",
+  staff: "the staff management section for managing hotel employees.",
+  manager: "the manager calls section showing staff escalations.",
+  orders: "the orders log section for monitoring and updating order statuses.",
+  feedback: "the customer feedback and reviews section.",
+  assets: "the assets management section for hotel media and branding.",
+  ai: "the AI assistant tab for generating menu copy and food graphics.",
 };
 
 const QUICK_PROMPTS = [
-  'Summarize what I can do on this page',
-  'Write a premium description for today\'s special',
-  'How do I resolve a manager call?',
+  "Summarize what I can do on this page",
+  "Write a premium description for today's special",
+  "How do I resolve a manager call?",
 ];
 
-function stripMarkdown(text = '') {
+function stripMarkdown(text = "") {
   return text
-    .replace(/^#{1,6}\s+/gm, '')
-    .replace(/^\s*[-*]\s+/gm, '- ')
-    .replace(/\*\*(.*?)\*\*/g, '$1')
-    .replace(/__(.*?)__/g, '$1')
-    .replace(/\*(.*?)\*/g, '$1')
-    .replace(/`([^`]+)`/g, '$1')
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^\s*[-*]\s+/gm, "- ")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/__(.*?)__/g, "$1")
+    .replace(/\*(.*?)\*/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
     .trim();
+}
+function escapeHtml(unsafe) {
+  return String(unsafe)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function FormattedContent({ content, isUser }) {
-  const blocks = stripMarkdown(content)
-    .split(/\n{2,}/)
-    .map((block) => block.trim())
-    .filter(Boolean);
+  if (!content) return null;
+  if (isUser) {
+    return <div className="whitespace-pre-line">{escapeHtml(content)}</div>;
+  }
 
-  if (!blocks.length) return null;
-
-  return (
-    <div className="space-y-2">
-      {blocks.map((block, index) => {
-        const lines = block.split('\n').map((line) => line.trim()).filter(Boolean);
-        const isList = lines.length > 1 && lines.every((line) => /^(-|\d+[.)])\s+/.test(line));
-
-        if (isList) {
-          return (
-            <ul key={index} className="space-y-1">
-              {lines.map((line, lineIndex) => (
-                <li key={lineIndex} className="flex gap-1.5">
-                  <span className={isUser ? 'text-pale-light/70' : 'text-gold'}>-</span>
-                  <span>{line.replace(/^(-|\d+[.)])\s+/, '')}</span>
-                </li>
-              ))}
-            </ul>
-          );
-        }
-
-        return (
-          <p key={index} className="whitespace-pre-line">
-            {block}
-          </p>
-        );
-      })}
-    </div>
-  );
+  // Assistant content is expected to be HTML (server instructed to return HTML).
+  // Render as HTML. This uses dangerouslySetInnerHTML; ensure AI responses
+  // are trusted or sanitized server-side if needed.
+  return <div dangerouslySetInnerHTML={{ __html: content }} />;
 }
 
 function Message({ msg }) {
-  const isUser = msg.role === 'user';
+  const isUser = msg.role === "user";
   return (
-    <div className={`flex gap-2 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+    <div className={`flex gap-2 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
       {!isUser && (
         <div className="shrink-0 w-6 h-6 rounded-full bg-gold/20 border border-gold/30 flex items-center justify-center mt-0.5">
           <Bot size={13} className="text-gold" />
@@ -83,11 +75,11 @@ function Message({ msg }) {
       )}
       <div
         className={[
-          'max-w-[85%] px-3 py-2 rounded-2xl text-xs leading-relaxed',
+          "max-w-[85%] px-3 py-2 rounded-2xl text-xs leading-relaxed",
           isUser
-            ? 'bg-gold text-pale-light rounded-tr-sm ml-auto'
-            : 'bg-surface border border-gold-muted/30 text-rough rounded-tl-sm shadow-sm',
-        ].join(' ')}
+            ? "bg-gold text-pale-light rounded-tr-sm ml-auto"
+            : "bg-surface border border-gold-muted/30 text-rough rounded-tl-sm shadow-sm",
+        ].join(" ")}
       >
         <FormattedContent content={msg.content} isUser={isUser} />
       </div>
@@ -100,11 +92,12 @@ export default function GrokAssistant({ activeTab }) {
   const [expanded, setExpanded] = useState(false);
   const [messages, setMessages] = useState([
     {
-      role: 'assistant',
-      content: '👋 Hi! I\'m your Habesha Grand AI assistant. Ask me anything — I\'m aware of what page you\'re on.',
+      role: "assistant",
+      content:
+        "👋 Hi! I'm your Habesha Grand AI assistant. Ask me anything — I'm aware of what page you're on.",
     },
   ]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
@@ -116,52 +109,59 @@ export default function GrokAssistant({ activeTab }) {
   }, [open]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
   async function sendMessage(text) {
     const userText = (text || input).trim();
     if (!userText || loading) return;
-    setInput('');
+    setInput("");
 
-    const context = TAB_CONTEXT[activeTab] || 'the admin panel.';
+    const context = TAB_CONTEXT[activeTab] || "the admin panel.";
     const systemPrompt = [
-      'You are a helpful AI assistant for Habesha Grand Hotel\'s admin panel.',
+      "You are a helpful AI assistant for Habesha Grand Hotel's admin panel.",
       `The admin is currently on ${context}`,
-      'Keep responses concise, practical, and friendly.',
-      'Use short paragraphs and simple bullet lists when useful.',
-      'Do not use markdown headings, tables, code fences, or excessive bold formatting.',
-      'You can help with menu copywriting, explaining features, generating descriptions, and operational guidance.',
-    ].join(' ');
+      "Keep responses concise, practical, and friendly.",
+      "Use short paragraphs and simple bullet lists when useful.",
+      "Respond using HTML only (no Markdown). Use simple HTML elements: <p>, <ul>, <ol>, <li>, <strong>, <em>, <br>, and <a> where appropriate. Do not include <script> or inline event handlers.",
+      "Do not use markdown headings, tables, code fences, or excessive bold formatting.",
+      "You can help with menu copywriting, explaining features, generating descriptions, and operational guidance.",
+    ].join(" ");
 
-    const newMessages = [...messages, { role: 'user', content: userText }];
+    const newMessages = [...messages, { role: "user", content: userText }];
     setMessages(newMessages);
     setLoading(true);
 
     try {
       const historyForApi = newMessages.slice(-8); // last 8 messages for context
       const prompt = historyForApi
-        .map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
-        .join('\n');
+        .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
+        .join("\n");
 
-      const data = await api('/ai/groq', {
-        method: 'POST',
+      const data = await api("/ai/groq", {
+        method: "POST",
         body: {
-          task: 'content',
+          task: "content",
           prompt: `System: ${systemPrompt}\n\n${prompt}\nAssistant:`,
-          tone: 'warm',
+          tone: "warm",
           temperature: 0.35,
         },
       });
 
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: data.text || 'Sorry, I couldn\'t generate a response.' },
+        {
+          role: "assistant",
+          content: data.text || "Sorry, I couldn't generate a response.",
+        },
       ]);
     } catch (err) {
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: `⚠️ Error: ${err.message || 'Failed to reach AI service.'}` },
+        {
+          role: "assistant",
+          content: `⚠️ Error: ${err.message || "Failed to reach AI service."}`,
+        },
       ]);
     } finally {
       setLoading(false);
@@ -169,7 +169,7 @@ export default function GrokAssistant({ activeTab }) {
   }
 
   function handleKey(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
@@ -178,14 +178,14 @@ export default function GrokAssistant({ activeTab }) {
   function clearChat() {
     setMessages([
       {
-        role: 'assistant',
-        content: '👋 Chat cleared! How can I help you?',
+        role: "assistant",
+        content: "👋 Chat cleared! How can I help you?",
       },
     ]);
   }
 
-  const panelWidth = expanded ? 'w-[480px]' : 'w-[340px]';
-  const panelHeight = expanded ? 'h-[560px]' : 'h-[420px]';
+  const panelWidth = expanded ? "w-[480px]" : "w-[340px]";
+  const panelHeight = expanded ? "h-[560px]" : "h-[420px]";
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
@@ -196,27 +196,29 @@ export default function GrokAssistant({ activeTab }) {
             initial={{ opacity: 0, y: 16, scale: 0.93 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.93 }}
-            transition={{ type: 'spring', stiffness: 340, damping: 30 }}
+            transition={{ type: "spring", stiffness: 340, damping: 30 }}
             className={[
-              'flex flex-col rounded-2xl border border-gold-muted/40 shadow-lifted overflow-hidden',
-              'bg-pale-light/95 backdrop-blur-md',
+              "flex flex-col rounded-2xl border border-gold-muted/40 shadow-lifted overflow-hidden",
+              "bg-pale-light/95 backdrop-blur-md",
               panelWidth,
               panelHeight,
-              'transition-all duration-200',
-            ].join(' ')}
-            style={{ boxShadow: '0 20px 60px rgba(26, 14, 5, 0.2)' }}
+              "transition-all duration-200",
+            ].join(" ")}
+            style={{ boxShadow: "0 20px 60px rgba(26, 14, 5, 0.2)" }}
           >
             {/* Header */}
             <div className="flex items-center gap-2.5 px-4 py-3 bg-rough border-b border-rough-light/20 shrink-0">
               <div className="w-7 h-7 rounded-lg bg-gold/20 border border-gold/40 flex items-center justify-center">
-                <span className="text-sm" aria-hidden="true">🏨</span>
+                <span className="text-sm" aria-hidden="true">
+                  🏨
+                </span>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-display font-semibold text-pale text-sm leading-tight">
                   Habesha Grand AI
                 </p>
                 <p className="text-[10px] text-gold-muted truncate capitalize">
-                  {activeTab ? `📍 ${activeTab} tab` : 'Admin Panel'}
+                  {activeTab ? `📍 ${activeTab} tab` : "Admin Panel"}
                 </p>
               </div>
               <div className="flex items-center gap-0.5">
@@ -229,7 +231,7 @@ export default function GrokAssistant({ activeTab }) {
                 </button>
                 <button
                   onClick={() => setExpanded((v) => !v)}
-                  title={expanded ? 'Compact' : 'Expand'}
+                  title={expanded ? "Compact" : "Expand"}
                   className="p-1.5 rounded-lg text-pale/50 hover:text-pale hover:bg-rough-light/30 transition-colors"
                 >
                   {expanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
@@ -295,7 +297,7 @@ export default function GrokAssistant({ activeTab }) {
                 placeholder="Ask anything… (Enter to send)"
                 disabled={loading}
                 className="flex-1 resize-none bg-surface border border-gold-muted/50 rounded-xl px-3 py-2 text-xs text-rough placeholder:text-gold-muted focus:outline-none focus:border-gold transition-colors max-h-24 min-h-[36px]"
-                style={{ fieldSizing: 'content' }}
+                style={{ fieldSizing: "content" }}
               />
               <button
                 onClick={() => sendMessage()}
@@ -317,7 +319,7 @@ export default function GrokAssistant({ activeTab }) {
         whileTap={{ scale: 0.95 }}
         className="relative w-13 h-13 rounded-2xl bg-rough border border-rough-light/20 shadow-lifted flex items-center justify-center text-pale hover:bg-rough/90 transition-colors"
         style={{ width: 52, height: 52 }}
-        aria-label={open ? 'Close AI assistant' : 'Open AI assistant'}
+        aria-label={open ? "Close AI assistant" : "Open AI assistant"}
         title="Habesha Grand AI Assistant"
       >
         <AnimatePresence mode="wait">
@@ -350,7 +352,7 @@ export default function GrokAssistant({ activeTab }) {
           <motion.span
             className="absolute inset-0 rounded-2xl border-2 border-gold/40"
             animate={{ scale: [1, 1.15, 1], opacity: [0.6, 0, 0.6] }}
-            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
           />
         )}
       </motion.button>
