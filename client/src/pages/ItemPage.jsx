@@ -11,6 +11,7 @@ import Button from '../components/ui/Button.jsx';
 import LoadingSpinner from '../components/ui/LoadingSpinner.jsx';
 import Notice from '../components/ui/Notice.jsx';
 import { formatMoney } from '../utils/formatting.js';
+import { useLanguage } from '../contexts/LanguageContext.jsx';
 
 export default function ItemPage() {
   const [searchParams] = useSearchParams();
@@ -18,6 +19,7 @@ export default function ItemPage() {
   const tableNumber = searchParams.get('table') || '1';
   const navigate = useNavigate();
   const { addItem } = useCart();
+  const { t } = useLanguage();
 
   const [item, setItem] = useState(null);
   const [reviews, setReviews] = useState([]);
@@ -43,7 +45,7 @@ export default function ItemPage() {
     if (!item) return;
     addItem({
       id: item.id,
-      name: item.name?.en || item.name,
+      name: t(item.name),
       price: item.price,
       imageUrl: item.imageUrl,
     }, qty);
@@ -62,7 +64,7 @@ export default function ItemPage() {
   return (
     <div className="space-y-6 pb-10">
       {added && (
-        <Notice type="success" message={`${item.name?.en || item.name} added to cart!`} onDismiss={() => setAdded(false)} />
+        <Notice type="success" message={`${t(item.name)} added to cart!`} onDismiss={() => setAdded(false)} />
       )}
 
       <button
@@ -76,12 +78,12 @@ export default function ItemPage() {
 
       {item.imageUrl && (
         <div className="rounded-2xl overflow-hidden h-56">
-          <OptimizedImage src={item.imageUrl} alt={item.name?.en || item.name || ''} className="w-full h-full" />
+          <OptimizedImage src={item.imageUrl} alt={t(item.name)} className="w-full h-full" />
         </div>
       )}
 
       <div>
-        <h1 className="font-display text-2xl font-bold text-rough">{item.name?.en || item.name}</h1>
+        <h1 className="font-display text-2xl font-bold text-rough">{t(item.name)}</h1>
         {reviews.length > 0 && (
           <div className="flex items-center gap-2 mt-1">
             <StarRating value={Math.round(avgRating)} readOnly size="sm" />
@@ -91,7 +93,7 @@ export default function ItemPage() {
       </div>
 
       {item.description && (
-        <p className="text-body leading-relaxed">{item.description?.en || item.description}</p>
+        <p className="text-body leading-relaxed">{t(item.description)}</p>
       )}
 
       <div className="flex items-center justify-between">

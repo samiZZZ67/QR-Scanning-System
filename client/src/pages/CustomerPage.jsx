@@ -13,12 +13,14 @@ import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { placeOrder } from '../api/orders.js';
 import { randomIdempotencyKey } from '../utils/formatting.js';
+import { useLanguage } from '../contexts/LanguageContext.jsx';
 
 export default function CustomerPage() {
   const [searchParams] = useSearchParams();
   const tableNumber = searchParams.get('table') || '1';
   const { menu, loading, error } = useMenu();
   const { cart, addToCart, cartTotal, cartCount, clearCart } = useCart();
+  const { t } = useLanguage();
   const [activeCategory, setActiveCategory] = useState(null);
   const [notice, setNotice] = useState(null);
   const [ordering, setOrdering] = useState(false);
@@ -84,7 +86,7 @@ export default function CustomerPage() {
               activeCategory === cat.id ? 'bg-gold text-pale-light' : 'bg-pale text-body hover:text-gold'
             ].join(' ')}
           >
-            {cat.name?.en || cat.name}
+            {t(cat.name)}
           </button>
         ))}
       </div>
@@ -102,17 +104,17 @@ export default function CustomerPage() {
               <div className="h-40 overflow-hidden">
                 <OptimizedImage
                   src={item.imageUrl}
-                  alt={item.name?.en || item.name || ''}
+                  alt={t(item.name)}
                   className="w-full h-full"
                 />
               </div>
             )}
             <div className="p-4 space-y-2">
               <h3 className="font-display font-semibold text-rough text-base">
-                {item.name?.en || item.name}
+                {t(item.name)}
               </h3>
               {item.description && (
-                <p className="text-xs text-body line-clamp-2">{item.description?.en || item.description}</p>
+                <p className="text-xs text-body line-clamp-2">{t(item.description)}</p>
               )}
               <div className="flex items-center justify-between pt-1">
                 <span className="font-bold text-gold">{formatMoney(item.price)}</span>
@@ -120,7 +122,7 @@ export default function CustomerPage() {
                   size="sm"
                   onClick={() => addToCart({
                     menuItemId: item.id,
-                    name: item.name?.en || item.name,
+                    name: t(item.name),
                     price: item.price,
                     image: item.imageUrl
                   })}

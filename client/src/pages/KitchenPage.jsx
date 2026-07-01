@@ -1,15 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChefHat, RefreshCw, Phone, Send, User, Loader2 } from 'lucide-react';
+import { ChefHat, RefreshCw } from 'lucide-react';
 import { useOrders } from '../hooks/useOrders.js';
 import { useRealtime } from '../hooks/useRealtime.js';
 import { updateOrderStatus } from '../api/orders.js';
 import { createServiceNotification } from '../api/notifications.js';
-import { listStaffMembers } from '../api/staff.js';
 import Button from '../components/ui/Button.jsx';
 import LoadingSpinner from '../components/ui/LoadingSpinner.jsx';
 import Notice from '../components/ui/Notice.jsx';
-import Modal from '../components/ui/Modal.jsx';
 import CallManagerButton from '../components/staff/CallManagerButton.jsx';
 import { formatTime, STATUS_COLORS } from '../utils/formatting.js';
 
@@ -27,14 +25,6 @@ export default function KitchenPage() {
   });
   const [notice, setNotice] = useState(null);
   const [updating, setUpdating] = useState(null);
-
-  // ── Call Waiter modal state ────────────────────────────────────────────
-  const [waiterModalOpen, setWaiterModalOpen] = useState(false);
-  const [waiters, setWaiters] = useState([]);
-  const [waitersLoading, setWaitersLoading] = useState(false);
-  const [selectedWaiterId, setSelectedWaiterId] = useState(null);
-  const [callReason, setCallReason] = useState('');
-  const [callSubmitting, setCallSubmitting] = useState(false);
 
   const handleOrderChange = useCallback((order) => {
     setOrders((prev) => {
@@ -70,66 +60,11 @@ export default function KitchenPage() {
     }
   }
 
-  // ── Open the waiter-selection modal ────────────────────────────────────
-  async function openWaiterModal() {
-    setWaiterModalOpen(true);
-    setSelectedWaiterId(null);
-    setCallReason('');
-    setWaitersLoading(true);
-    try {
-      const all = await listStaffMembers();
-      // Show only Waiter-role staff (active; online first)
-      const waiterList = (Array.isArray(all) ? all : [])
-        .filter((s) => s.role === 'Waiter' && s.active !== false && s.active !== 0)
-        .sort((a, b) => (b.online ? 1 : 0) - (a.online ? 1 : 0));
-      setWaiters(waiterList);
-    } catch {
-      setNotice({ type: 'error', message: 'Could not load waiters. Try again.' });
-      setWaiterModalOpen(false);
-    } finally {
-      setWaitersLoading(false);
-    }
-  }
-
-  // ── Send notification to selected waiter ───────────────────────────────
-  async function handleCallWaiter(e) {
-    e.preventDefault();
-    if (!selectedWaiterId) return;
-    const waiter = waiters.find((w) => w.id === selectedWaiterId);
-    if (!waiter) return;
-
-    setCallSubmitting(true);
-    try {
-      await createServiceNotification({
-        type: 'call-waiter',
-        tableNumber: 0,
-        locationType: 'kitchen',
-        reason: callReason.trim() || 'Food is ready for pickup',
-        targetWaiterName: waiter.name,
-        targetWaiterId: waiter.id,
-      });
-      setNotice({ type: 'success', message: `${waiter.name} has been notified!` });
-      setWaiterModalOpen(false);
-    } catch (err) {
-      setNotice({ type: 'error', message: err.message || 'Failed to call waiter.' });
-    } finally {
-      setCallSubmitting(false);
-    }
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="font-display text-2xl font-bold text-rough">Kitchen Display</h1>
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            icon={<Phone size={15} />}
-            onClick={openWaiterModal}
-          >
-            Call Waiter
-          </Button>
           <CallManagerButton staffRole="Kitchen" onNotice={setNotice} />
           <Button variant="ghost" size="sm" icon={<RefreshCw size={15} />} onClick={refresh}>
             Refresh
@@ -202,99 +137,6 @@ export default function KitchenPage() {
           </AnimatePresence>
         </div>
       )}
-
-      {/* ── Call Waiter Modal ──────────────────────────────────────────────── */}
-      <Modal
-        open={waiterModalOpen}
-        onClose={() => setWaiterModalOpen(false)}
-        title="Call a Waiter"
-        size="sm"
-      >
-        {waitersLoading ? (
-          <div className="flex items-center justify-center py-8 gap-3 text-gold-muted">
-            <Loader2 size={20} className="animate-spin" />
-            <span className="text-sm">Loading waiters…</span>
-          </div>
-        ) : waiters.length === 0 ? (
-          <div className="text-center py-8 text-gold-muted">
-            <User size={32} className="mx-auto mb-2 opacity-30" />
-            <p className="text-sm font-medium">No waiters available</p>
-            <p className="text-xs mt-1">Make sure waiter staff are registered in the system.</p>
-          </div>
-        ) : (
-          <form onSubmit={handleCallWaiter} className="space-y-4">
-            <div>
-              <p className="text-sm font-medium text-rough mb-2">Select a waiter to notify:</p>
-              <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-                {waiters.map((w) => (
-                  <label
-                    key={w.id}
-                    className={[
-                      'flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors',
-                      selectedWaiterId === w.id
-                        ? 'border-gold bg-gold/10 text-rough'
-                        : 'border-gold-muted/40 hover:border-gold/60 hover:bg-pale/30',
-                    ].join(' ')}
-                  >
-                    <input
-                      type="radio"
-                      name="waiter"
-                      value={w.id}
-                      checked={selectedWaiterId === w.id}
-                      onChange={() => setSelectedWaiterId(w.id)}
-                      className="accent-gold"
-                    />
-                    <div className="flex-1">
-                      <p className="font-medium text-sm text-rough">{w.name}</p>
-                      <p className="text-xs text-gold-muted">
-                        {w.assignedFloor ? `Floor ${w.assignedFloor} · ` : ''}
-                        {w.online ? (
-                          <span className="text-green-600 font-medium">● Online</span>
-                        ) : (
-                          <span className="text-gold-muted">○ Offline</span>
-                        )}
-                      </p>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label htmlFor="call-reason" className="text-sm font-medium text-rough">
-                Reason <span className="text-gold-muted font-normal">(optional)</span>
-              </label>
-              <input
-                id="call-reason"
-                type="text"
-                value={callReason}
-                onChange={(e) => setCallReason(e.target.value)}
-                placeholder="e.g. Table 5 order ready for pickup"
-                className="w-full rounded-xl border border-gold-muted bg-surface px-3 py-2 text-sm text-rough placeholder:text-gold-muted focus:outline-none focus:border-gold"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-1">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setWaiterModalOpen(false)}
-                disabled={callSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                loading={callSubmitting}
-                disabled={!selectedWaiterId}
-                icon={<Send size={15} />}
-              >
-                Notify Waiter
-              </Button>
-            </div>
-          </form>
-        )}
-      </Modal>
     </div>
   );
 }

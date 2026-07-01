@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { QrCode, Menu, X } from "lucide-react";
+import { useLanguage, SUPPORTED_LANGUAGES } from "../../contexts/LanguageContext.jsx";
 
 const NAV_LINKS = [
   { label: "Home", to: "/" },
@@ -16,6 +17,7 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { pathname } = useLocation();
+  const { language, setLanguage } = useLanguage();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -85,26 +87,45 @@ export default function Navbar() {
           })}
         </ul>
 
-        {/* Desktop CTA */}
-        <div className="hidden md:block">
-          <Link
-            to="/order?table=101"
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-gold hover:bg-gold-hover text-pale text-sm font-medium rounded-xl transition-colors"
-          >
-            <QrCode size={15} aria-hidden="true" />
-            Order Now
-          </Link>
-        </div>
+        <div className="flex items-center gap-3">
+          {/* Language Selector */}
+          <div className="flex bg-pale/10 rounded-lg p-0.5">
+            {SUPPORTED_LANGUAGES.map((lang) => (
+              <button
+                key={lang.code}
+                onClick={() => setLanguage(lang.code)}
+                className={`px-2 py-1 text-xs font-medium rounded-md transition-colors uppercase ${
+                  language === lang.code
+                    ? "bg-gold text-pale-light shadow-sm"
+                    : "text-pale/80 hover:text-pale hover:bg-pale/20"
+                }`}
+              >
+                {lang.code}
+              </button>
+            ))}
+          </div>
 
-        {/* Mobile toggle */}
-        <button
-          onClick={() => setMobileOpen((o) => !o)}
-          className="md:hidden p-2 rounded-lg text-pale hover:bg-pale/10 transition-colors"
-          aria-label={mobileOpen ? "Close menu" : "Open menu"}
-          aria-expanded={mobileOpen}
-        >
-          {mobileOpen ? <X size={22} /> : <Menu size={22} />}
-        </button>
+          {/* Desktop CTA */}
+          <div className="hidden md:block">
+            <Link
+              to="/order?table=101"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-gold hover:bg-gold-hover text-pale text-sm font-medium rounded-xl transition-colors"
+            >
+              <QrCode size={15} aria-hidden="true" />
+              Order Now
+            </Link>
+          </div>
+
+          {/* Mobile toggle */}
+          <button
+            onClick={() => setMobileOpen((o) => !o)}
+            className="md:hidden p-2 rounded-lg text-pale hover:bg-pale/10 transition-colors"
+            aria-label={mobileOpen ? "Close menu" : "Open menu"}
+            aria-expanded={mobileOpen}
+          >
+            {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </div>
       </nav>
 
       {/* Mobile menu */}

@@ -92,11 +92,14 @@ export function useNotifications() {
     'serviceNotification.resolved': handleResolved,
   });
 
-  // Total unread across all notification types
-  const unreadCount = notifications.filter((n) => !seenIds.has(n.id)).length;
-  // Badge on the bell — only counts unread manager calls
+  // Total unread across all notification types (must be active/open)
+  const unreadCount = notifications.filter(
+    (n) => n.status === 'open' && !seenIds.has(n.id)
+  ).length;
+
+  // Badge on the bell — only counts unread manager calls (must be active/open)
   const managerUnreadCount = notifications.filter(
-    (n) => !seenIds.has(n.id) && !!n.staffName
+    (n) => n.status === 'open' && !seenIds.has(n.id) && !!n.staffName
   ).length;
 
   function markAllSeen() {
