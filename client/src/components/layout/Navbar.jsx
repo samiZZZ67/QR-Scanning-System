@@ -1,28 +1,109 @@
-import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import { QrCode, Menu, X } from "lucide-react";
-import { useLanguage, SUPPORTED_LANGUAGES } from "../../contexts/LanguageContext.jsx";
+import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Link, useLocation } from 'react-router-dom';
+import { QrCode, Menu, X, Globe, ChevronDown, Check } from 'lucide-react';
+import { useLanguage, SUPPORTED_LANGUAGES } from '../../contexts/LanguageContext.jsx';
 
 const NAV_LINKS = [
-  { label: "Home", to: "/" },
-  { label: "Menu", to: "/order?table=101" },
-  { label: "Contact", to: "/contact" },
-  { label: "Kitchen", to: "/kitchen" },
-  { label: "Waiter", to: "/waiter" },
-  { label: "Admin", to: "/admin" },
+  { label: 'Home', to: '/' },
+  { label: 'Menu', to: '/order?table=101' },
+  { label: 'Contact', to: '/contact' },
+  { label: 'Kitchen', to: '/kitchen' },
+  { label: 'Waiter', to: '/waiter' },
+  { label: 'Admin', to: '/admin' },
 ];
+
+/**
+ * LanguageDropdown — the ONE place the language selector appears
+ * for non-QR public pages (home, contact, etc.).
+ */
+function LanguageDropdown() {
+  const { language, setLanguage } = useLanguage();
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  const currentLang = SUPPORTED_LANGUAGES.find((l) => l.code === language) || SUPPORTED_LANGUAGES[0];
+
+  useEffect(() => {
+    function handler(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        id="navbar-lang-btn"
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-pale/10 hover:bg-pale/20 border border-pale/20 hover:border-gold/40 text-pale text-xs font-semibold transition-all"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label="Select language"
+      >
+        <Globe size={14} className="text-gold" />
+        <span className="uppercase tracking-wide">{currentLang.code}</span>
+        <span className="text-pale/50 font-normal">/</span>
+        <span className="text-pale/70 font-normal">Language</span>
+        <ChevronDown
+          size={13}
+          className={`text-pale/60 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.ul
+            role="listbox"
+            aria-label="Language options"
+            initial={{ opacity: 0, y: -8, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.97 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="absolute right-0 top-full mt-2 w-44 bg-off-navy border border-gold-muted/30 rounded-xl shadow-xl overflow-hidden z-50"
+          >
+            {SUPPORTED_LANGUAGES.map((lang) => {
+              const active = language === lang.code;
+              return (
+                <li key={lang.code}>
+                  <button
+                    role="option"
+                    aria-selected={active}
+                    onClick={() => { setLanguage(lang.code); setOpen(false); }}
+                    className={`w-full flex items-center justify-between px-4 py-3 text-sm transition-colors ${
+                      active
+                        ? 'bg-gold/20 text-gold font-semibold'
+                        : 'text-pale/80 hover:bg-pale/10 hover:text-pale'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <span className="text-[10px] font-bold uppercase tracking-widest w-6 text-gold/70">
+                        {lang.code}
+                      </span>
+                      <span>{lang.label}</span>
+                    </span>
+                    {active && <Check size={14} className="text-gold shrink-0" />}
+                  </button>
+                </li>
+              );
+            })}
+          </motion.ul>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { pathname } = useLocation();
-  const { language, setLanguage } = useLanguage();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   // Close mobile menu on route change
@@ -34,8 +115,8 @@ export default function Navbar() {
     <header
       className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${
         scrolled
-          ? "bg-off-navy/95 backdrop-blur-md shadow-lg"
-          : "bg-transparent"
+          ? 'bg-off-navy/95 backdrop-blur-md shadow-lg'
+          : 'bg-transparent'
       }`}
     >
       <nav
@@ -52,7 +133,7 @@ export default function Navbar() {
             <QrCode size={18} className="text-gold" aria-hidden="true" />
           </span>
           <span className="font-display text-lg text-pale leading-tight">
-            Habesha<span className="text-gold"> Grand</span>
+            Habesha<span className="text-gold">Grand</span>
           </span>
         </Link>
 
@@ -60,19 +141,19 @@ export default function Navbar() {
         <ul className="hidden md:flex items-center gap-1" role="list">
           {NAV_LINKS.map(({ label, to }) => {
             const active =
-              to === "/"
-                ? pathname === "/"
-                : pathname.startsWith(to.split("?")[0]);
+              to === '/'
+                ? pathname === '/'
+                : pathname.startsWith(to.split('?')[0]);
             return (
               <li key={label}>
                 <Link
                   to={to}
                   className={`relative px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                     active
-                      ? "text-gold"
-                      : "text-pale/80 hover:text-pale hover:bg-pale/10"
+                      ? 'text-gold'
+                      : 'text-pale/80 hover:text-pale hover:bg-pale/10'
                   }`}
-                  aria-current={active ? "page" : undefined}
+                  aria-current={active ? 'page' : undefined}
                 >
                   {label}
                   {active && (
@@ -88,22 +169,8 @@ export default function Navbar() {
         </ul>
 
         <div className="flex items-center gap-3">
-          {/* Language Selector */}
-          <div className="flex bg-pale/10 rounded-lg p-0.5">
-            {SUPPORTED_LANGUAGES.map((lang) => (
-              <button
-                key={lang.code}
-                onClick={() => setLanguage(lang.code)}
-                className={`px-2 py-1 text-xs font-medium rounded-md transition-colors uppercase ${
-                  language === lang.code
-                    ? "bg-gold text-pale-light shadow-sm"
-                    : "text-pale/80 hover:text-pale hover:bg-pale/20"
-                }`}
-              >
-                {lang.code}
-              </button>
-            ))}
-          </div>
+          {/* Language Selector — ONLY in top menu bar */}
+          <LanguageDropdown />
 
           {/* Desktop CTA */}
           <div className="hidden md:block">
@@ -120,7 +187,7 @@ export default function Navbar() {
           <button
             onClick={() => setMobileOpen((o) => !o)}
             className="md:hidden p-2 rounded-lg text-pale hover:bg-pale/10 transition-colors"
-            aria-label={mobileOpen ? "Close menu" : "Open menu"}
+            aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={mobileOpen}
           >
             {mobileOpen ? <X size={22} /> : <Menu size={22} />}
@@ -133,9 +200,9 @@ export default function Navbar() {
         {mobileOpen && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
+            animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.25, ease: "easeInOut" }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
             className="md:hidden overflow-hidden bg-off-navy/98 backdrop-blur-md border-t border-pale/10"
           >
             <ul className="px-4 py-4 space-y-1" role="list">

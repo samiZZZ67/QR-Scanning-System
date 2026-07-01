@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ShoppingCart } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext.jsx';
+import { useLanguage } from '../../contexts/LanguageContext.jsx';
 import OptimizedImage from '../ui/OptimizedImage.jsx';
 import StarRating from '../ui/StarRating.jsx';
 import NumericField from '../ui/NumericField.jsx';
@@ -10,6 +11,7 @@ import { formatMoney } from '../../utils/formatting.js';
 
 export default function ItemModal({ item, isOpen, onClose }) {
   const { addItem } = useCart();
+  const { t } = useLanguage();
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
 
@@ -28,15 +30,16 @@ export default function ItemModal({ item, isOpen, onClose }) {
 
   if (!item) return null;
 
-  const name = item.name?.en || item.name;
-  const description = item.description?.en || item.description;
-  const avgRating = Number(item.avgRating ?? item.rating ?? 0);
+  // Use t() helper for multilingual fields — resolves {en, am, ar} or plain string
+  const name        = t(item.name);
+  const description = t(item.description);
+  const avgRating   = Number(item.avgRating ?? item.rating ?? 0);
   const ratingCount = Number(item.ratingCount ?? item.reviewCount ?? 0);
 
   function handleAdd() {
     addItem({
       id: item.id,
-      name: name,
+      name: item.name,   // store the full multilingual object so cart resolves correctly
       price: item.price,
       imageUrl: item.imageUrl,
     }, qty);
@@ -76,7 +79,7 @@ export default function ItemModal({ item, isOpen, onClose }) {
               <button
                 onClick={onClose}
                 className="absolute top-3 right-3 p-2 bg-rough/50 hover:bg-rough/70 text-pale-light rounded-full backdrop-blur-md transition-colors"
-                aria-label="Close modal"
+                aria-label={t('close')}
               >
                 <X size={18} />
               </button>
@@ -89,7 +92,7 @@ export default function ItemModal({ item, isOpen, onClose }) {
                 {avgRating > 0 && (
                   <div className="flex items-center gap-2 mt-1.5">
                     <StarRating value={avgRating} readOnly size="sm" />
-                    <span className="text-xs text-gold-muted">({ratingCount} reviews)</span>
+                    <span className="text-xs text-gold-muted">({ratingCount} {t('reviews')})</span>
                   </div>
                 )}
               </div>
@@ -105,14 +108,16 @@ export default function ItemModal({ item, isOpen, onClose }) {
                   <NumericField value={qty} onChange={setQty} min={1} max={20} label="Quantity" />
                 </div>
 
-                <Button 
-                  size="lg" 
-                  className="w-full" 
-                  icon={added ? undefined : <ShoppingCart size={18} />} 
+                <Button
+                  size="lg"
+                  className="w-full"
+                  icon={added ? undefined : <ShoppingCart size={18} />}
                   onClick={handleAdd}
                   style={added ? { backgroundColor: '#16a34a', color: 'white' } : {}}
                 >
-                  {added ? '✓ Added to Cart!' : `Add ${qty > 1 ? `${qty}x ` : ''}to Cart — ${formatMoney(item.price * qty)}`}
+                  {added
+                    ? `✓ ${t('added')}`
+                    : `${t('addToCart')} — ${formatMoney(item.price * qty)}`}
                 </Button>
               </div>
             </div>

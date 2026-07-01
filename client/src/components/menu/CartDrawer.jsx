@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ShoppingCart, Minus, Plus, Trash2, FileText } from 'lucide-react';
 import { useCart } from '../../contexts/CartContext.jsx';
+import { useLanguage } from '../../contexts/LanguageContext.jsx';
 import { formatMoney } from '../../utils/formatting.js';
 import Button from '../ui/Button.jsx';
 
 export function CartDrawer({ isOpen, onClose, onOrder, loading = false }) {
   const { items, removeItem, updateQty, updateNote, totalItems, totalPrice, clearCart } = useCart();
+  const { t } = useLanguage();
   const [expandedNote, setExpandedNote] = useState(null);
 
   return (
@@ -29,17 +31,17 @@ export function CartDrawer({ isOpen, onClose, onOrder, loading = false }) {
             exit={{ x: 400 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-pale-light border-l border-gold-muted/30 shadow-2xl z-50 flex flex-col"
-            aria-label="Shopping cart"
+            aria-label={t('yourCart')}
           >
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gold-muted/30">
               <div className="flex items-center gap-2">
                 <ShoppingCart size={20} className="text-gold" />
                 <h2 className="font-display text-lg font-semibold text-rough">
-                  Your Cart
+                  {t('yourCart')}
                   {totalItems > 0 && (
                     <span className="ml-2 text-sm font-sans text-gold-muted">
-                      ({totalItems} item{totalItems !== 1 ? 's' : ''})
+                      ({totalItems} {totalItems !== 1 ? t('items') : t('item')})
                     </span>
                   )}
                 </h2>
@@ -47,7 +49,7 @@ export function CartDrawer({ isOpen, onClose, onOrder, loading = false }) {
               <button
                 onClick={onClose}
                 className="p-2 rounded-lg hover:bg-pale text-gold-muted hover:text-rough transition-colors"
-                aria-label="Close cart"
+                aria-label={t('close')}
               >
                 <X size={20} />
               </button>
@@ -58,13 +60,13 @@ export function CartDrawer({ isOpen, onClose, onOrder, loading = false }) {
               {items.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center text-gold-muted gap-3">
                   <ShoppingCart size={48} className="text-gold-muted/30" />
-                  <p className="font-display text-rough text-lg">Your cart is empty</p>
-                  <p className="text-sm">Browse the menu to add items</p>
+                  <p className="font-display text-rough text-lg">{t('cartEmpty')}</p>
+                  <p className="text-sm">{t('browseMenuToAdd')}</p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {items.map((item, idx) => {
-                    const name = typeof item.name === 'object' ? item.name.en : item.name;
+                    const name = t(item.name);
                     const itemKey = `${item.id}-${idx}`;
                     const isExpanded = expandedNote === itemKey;
                     return (
@@ -144,7 +146,7 @@ export function CartDrawer({ isOpen, onClose, onOrder, loading = false }) {
                               animate={{ opacity: 1 }}
                               className="mt-2 text-xs text-gold-muted italic"
                             >
-                              Note: {item.note}
+                              {t('note')}: {item.note}
                             </motion.div>
                           )}
                         </AnimatePresence>
@@ -154,7 +156,7 @@ export function CartDrawer({ isOpen, onClose, onOrder, loading = false }) {
                           className="mt-2 text-xs text-gold hover:text-rough transition-colors flex items-center gap-1"
                         >
                           <FileText size={12} />
-                          {isExpanded ? 'Done' : 'Add Note'}
+                          {isExpanded ? t('done') : t('addNote')}
                         </button>
                       </motion.div>
                     );
@@ -165,7 +167,7 @@ export function CartDrawer({ isOpen, onClose, onOrder, loading = false }) {
                       onClick={clearCart}
                       className="w-full text-center text-xs text-red-400 hover:text-red-600 py-2 transition-colors"
                     >
-                      Clear all items
+                      {t('clearAll')}
                     </button>
                   )}
                 </div>
@@ -176,7 +178,7 @@ export function CartDrawer({ isOpen, onClose, onOrder, loading = false }) {
             {items.length > 0 && (
               <div className="border-t border-gold-muted/30 p-5 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-display text-rough font-semibold">Total</span>
+                  <span className="font-display text-rough font-semibold">{t('total')}</span>
                   <span className="font-display text-xl text-gold font-bold">{formatMoney(totalPrice)}</span>
                 </div>
                 <Button
@@ -186,7 +188,7 @@ export function CartDrawer({ isOpen, onClose, onOrder, loading = false }) {
                   loading={loading}
                 >
                   <ShoppingCart size={18} aria-hidden="true" />
-                  Place Order
+                  {t('placeOrder')}
                 </Button>
               </div>
             )}
