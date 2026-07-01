@@ -1,5 +1,5 @@
-import { lazy } from "react";
-import { createBrowserRouter, Navigate, useSearchParams } from "react-router-dom";
+import { lazy, useEffect } from "react";
+import { createBrowserRouter, Navigate, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
 const HomePage = lazy(() => import("./pages/home/index.jsx"));
@@ -21,12 +21,30 @@ function PageWrapper({ children }) {
   return <motion.div {...pageMotion}>{children}</motion.div>;
 }
 
-function RestoreStaticRoute() {
-  const [searchParams] = useSearchParams();
-  const redirect = searchParams.get("redirect");
-  const target = redirect?.startsWith("/") ? redirect : "/";
+/**
+ * RestoreSpaRoute — handles the fallback redirect from public/404.html.
+ *
+ * On static hosts that don't support SPA rewrites (e.g. GitHub Pages),
+ * 404.html stores the original path in sessionStorage and redirects to "/".
+ * This component reads that stored path and navigates to it, preserving
+ * the full URL (path + query string + hash).
+ *
+ * On Render (which rewrites /* → /index.html), 404.html is never served
+ * and this component simply redirects unknown paths to "/".
+ */
+function RestoreSpaRoute() {
+  const navigate = useNavigate();
 
-  return <Navigate to={target} replace />;
+  useEffect(() => {
+    const stored = sessionStorage.getItem("__spa_redirect");
+    if (stored && stored !== "/") {
+      sessionStorage.removeItem("__spa_redirect");
+      navigate(stored, { replace: true });
+    }
+  }, [navigate]);
+
+  // While we check sessionStorage, render nothing (or fall through to home)
+  return <Navigate to="/" replace />;
 }
 
 export const router = createBrowserRouter([
@@ -88,6 +106,6 @@ export const router = createBrowserRouter([
   },
   {
     path: "*",
-    element: <RestoreStaticRoute />,
+    element: <RestoreSpaRoute />,
   },
 ]);

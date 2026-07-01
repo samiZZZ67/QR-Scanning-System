@@ -90,7 +90,7 @@ export default function HeroSection() {
             <Button
               size="lg"
               variant="primary"
-              onClick={() => navigate('/order?table=101')}
+              onClick={() => navigate('/order')}
               className="shadow-lg"
               aria-label="Explore our menu and start ordering"
             >

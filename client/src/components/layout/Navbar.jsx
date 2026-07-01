@@ -6,7 +6,7 @@ import { useLanguage, SUPPORTED_LANGUAGES } from '../../contexts/LanguageContext
 
 const NAV_LINKS = [
   { label: 'Home', to: '/' },
-  { label: 'Menu', to: '/order?table=101' },
+  { label: 'Menu', to: '/order' },
   { label: 'Contact', to: '/contact' },
   { label: 'Kitchen', to: '/kitchen' },
   { label: 'Waiter', to: '/waiter' },
@@ -175,7 +175,7 @@ export default function Navbar() {
           {/* Desktop CTA */}
           <div className="hidden md:block">
             <Link
-              to="/order?table=101"
+              to="/order"
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-gold hover:bg-gold-hover text-pale text-sm font-medium rounded-xl transition-colors"
             >
               <QrCode size={15} aria-hidden="true" />
@@ -218,7 +218,7 @@ export default function Navbar() {
               ))}
               <li className="pt-2">
                 <Link
-                  to="/order?table=101"
+                  to="/order"
                   className="flex items-center justify-center gap-2 w-full py-3 bg-gold hover:bg-gold-hover text-pale font-medium rounded-xl transition-colors"
                 >
                   <QrCode size={16} aria-hidden="true" />

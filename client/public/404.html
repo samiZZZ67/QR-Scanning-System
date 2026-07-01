@@ -3,13 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Redirecting...</title>
+    <title>Habesha Grand Hotel — QR Dining</title>
     <script>
+      // Preserve the full path + search + hash and redirect to index.html
+      // This handles GitHub Pages / hosts that don't support SPA rewrites.
+      // On Render (which already rewrites /* → /index.html), this file is
+      // never served. It is kept here as a fallback for other static hosts.
       var path = window.location.pathname + window.location.search + window.location.hash;
-      window.location.replace("/?redirect=" + encodeURIComponent(path));
+      // Use sessionStorage to survive the redirect without mangling the URL
+      sessionStorage.setItem('__spa_redirect', path);
+      window.location.replace('/');
     </script>
   </head>
   <body>
-    Redirecting...
+    Redirecting…
   </body>
 </html>

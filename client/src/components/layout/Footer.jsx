@@ -78,7 +78,7 @@ export default function Footer() {
             <ul className="space-y-2.5 text-sm" role="list">
               {[
                 { label: "Home", to: "/" },
-                { label: "Browse Menu", to: "/order?table=101" },
+                { label: "Browse Menu", to: "/order" },
                 { label: "Contact Us", to: "/contact" },
               ].map(({ label, to }) => (
                 <li key={label}>

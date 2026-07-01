@@ -23,7 +23,7 @@ import { FeedbackForm } from '../../components/order/FeedbackForm.jsx';
 
 export default function CustomerPage() {
   const [searchParams] = useSearchParams();
-  const tableNumber = searchParams.get('table') || '1';
+  const tableNumber = searchParams.get('table');
   const { menu, loading, error } = useMenu();
   const cart = useCart();
   const { t, language } = useLanguage();
@@ -40,7 +40,9 @@ export default function CustomerPage() {
   const [selectedItem, setSelectedItem] = useState(null);
 
   useEffect(() => {
-    document.title = `${t('menu')} — ${t('table')} ${tableNumber} | Habesha Grand Hotel`;
+    document.title = tableNumber
+      ? `${t('menu')} — ${t('table')} ${tableNumber} | Habesha Grand Hotel`
+      : `${t('menu')} | Habesha Grand Hotel`;
   }, [tableNumber, language, t]);
 
   // Poll order status while tracking
@@ -73,7 +75,7 @@ export default function CustomerPage() {
     }
   }, [tableNumber]);
 
-  useRealtime({ room: `table-${tableNumber}` }, {
+  useRealtime(tableNumber ? { room: `table-${tableNumber}` } : null, {
     'order.statusChanged': handleOrderUpdate,
     'serviceNotification.resolved': handleServiceResolved,
   });
@@ -192,7 +194,9 @@ export default function CustomerPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="font-display text-2xl font-bold text-rough">{t('ourMenu')}</h1>
-              <p className="text-xs text-gold-muted">{t('table')} {tableNumber}</p>
+              {tableNumber && (
+                <p className="text-xs text-gold-muted">{t('table')} {tableNumber}</p>
+              )}
             </div>
             {phase === 'browse' && (
               <button

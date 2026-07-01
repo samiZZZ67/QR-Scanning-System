@@ -127,7 +127,7 @@ export default function MenuPreviewSection() {
                     {dish.price} <span className="text-sm text-rough/50 font-sans font-normal">ETB</span>
                   </span>
                   <button
-                    onClick={() => navigate('/order?table=101')}
+                    onClick={() => navigate('/order')}
                     className="text-sm text-gold hover:text-gold-hover font-medium font-sans flex items-center gap-1 transition-colors"
                     aria-label={`Order ${dish.name}`}
                   >
@@ -151,7 +151,7 @@ export default function MenuPreviewSection() {
           <Button
             size="lg"
             variant="primary"
-            onClick={() => navigate('/order?table=101')}
+            onClick={() => navigate('/order')}
             aria-label="View the full menu"
           >
             View Full Menu

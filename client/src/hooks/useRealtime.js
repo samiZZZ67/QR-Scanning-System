@@ -15,19 +15,26 @@ function getSocket() {
 /**
  * Subscribe to socket.io events.
  *
- * @param {{ role?: string }} options
+ * @param {{ role?: string, room?: string } | null} options - Pass null to skip subscription entirely.
  * @param {Record<string, Function>} handlers  { 'event.name': callbackFn }
  */
-export function useRealtime({ role } = {}, handlers = {}) {
+export function useRealtime(options = {}, handlers = {}) {
   // Keep a stable ref so wrappers always call the latest handler version
   const handlersRef = useRef(handlers);
   useEffect(() => {
     handlersRef.current = handlers;
   });
 
+  const role = options?.role;
+  const room = options?.room;
+
   useEffect(() => {
+    // If options is null/undefined, skip subscription entirely
+    if (!options) return;
+
     const socket = getSocket();
     if (role) socket.emit("subscribe", { role });
+    if (room) socket.emit("subscribe", { room });
 
     // Register one wrapper per event key so we can clean up precisely
     const eventKeys = Object.keys(handlers);
@@ -41,5 +48,5 @@ export function useRealtime({ role } = {}, handlers = {}) {
       wrappers.forEach(({ event, wrapper }) => socket.off(event, wrapper));
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [role]);
+  }, [role, room, options]);
 }
