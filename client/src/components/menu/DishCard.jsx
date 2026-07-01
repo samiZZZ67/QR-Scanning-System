@@ -4,16 +4,18 @@ import OptimizedImage from '../ui/OptimizedImage.jsx';
 import Badge from '../ui/Badge.jsx';
 import StarRating from '../ui/StarRating.jsx';
 import { formatMoney } from '../../utils/formatting.js';
+import { useLanguage } from '../../contexts/LanguageContext.jsx';
 
 /**
  * DishCard — menu grid card.
  * Props: item, onAddToCart(item, qty), tableNumber
  */
 export default function DishCard({ item, onAddToCart, onCardClick, tableNumber }) {
+  const { t } = useLanguage();
   const [added, setAdded] = useState(false);
 
-  const name        = item.name?.en        || item.name?.am        || String(item.name        || '');
-  const description = item.description?.en || item.description?.am || String(item.description || '');
+  const name        = t(item.name);
+  const description = t(item.description);
   const avgRating   = Number(item.avgRating  ?? item.rating       ?? 0);
   const ratingCount = Number(item.ratingCount ?? item.reviewCount  ?? 0);
 
@@ -89,9 +91,9 @@ export default function DishCard({ item, onAddToCart, onCardClick, tableNumber }
               ? 'bg-green-600 text-white'
               : 'bg-gold text-pale-light hover:bg-gold-hover',
           ].join(' ')}
-          aria-label={added ? 'Added to cart' : `Add ${name} to cart`}
+          aria-label={added ? t('added') : `${t('add')} ${name}`}
         >
-          {added ? '✓ Added' : '+ Add'}
+          {added ? t('added') : t('add')}
         </motion.button>
       </div>
     </motion.article>

@@ -1,12 +1,16 @@
 import { motion } from 'framer-motion';
+import { useLanguage } from '../../contexts/LanguageContext.jsx';
 
 export function CategoryFilter({ categories = [], active, onSelect }) {
+  const { t } = useLanguage();
+
   return (
     <div
       className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-none"
       role="tablist"
       aria-label="Menu categories"
     >
+      {/* "All" tab */}
       <button
         role="tab"
         aria-selected={active === null}
@@ -18,7 +22,7 @@ export function CategoryFilter({ categories = [], active, onSelect }) {
             : 'bg-pale text-rough hover:text-gold',
         ].join(' ')}
       >
-        All
+        {t('all')}
         {active === null && (
           <motion.div
             layoutId="cat-indicator"
@@ -30,7 +34,8 @@ export function CategoryFilter({ categories = [], active, onSelect }) {
 
       {categories.map((cat) => {
         const isActive = active === cat.id;
-        const label = typeof cat.name === 'object' ? cat.name.en : cat.name;
+        // Use t() helper so multilingual {en, am, ar} objects resolve correctly
+        const label = t(cat.name);
         return (
           <button
             key={cat.id}

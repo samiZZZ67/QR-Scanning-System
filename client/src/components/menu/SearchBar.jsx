@@ -1,11 +1,24 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, X } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext.jsx';
 
-export function SearchBar({ value = '', onChange, placeholder = 'Search menu...' }) {
+export function SearchBar({ value = '', onChange }) {
+  const { t, language } = useLanguage();
   const [local, setLocal] = useState(value);
   const timerRef = useRef(null);
 
+  // Sync external value changes
   useEffect(() => { setLocal(value); }, [value]);
+
+  // When language changes, fire onChange so parent can re-filter with empty term
+  // (keeps search consistent — no stale mixed-language results)
+  useEffect(() => {
+    // Only clear if there's an active search — let the parent re-filter
+    if (local) {
+      onChange(local);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [language]);
 
   function handleChange(e) {
     const v = e.target.value;
@@ -21,10 +34,13 @@ export function SearchBar({ value = '', onChange, placeholder = 'Search menu...'
 
   useEffect(() => () => clearTimeout(timerRef.current), []);
 
+  const placeholder = t('searchDishes');
+
   return (
     <div className="relative flex items-center bg-pale-light border border-gold-muted/50 rounded-xl focus-within:ring-2 focus-within:ring-gold focus-within:border-gold transition-all">
       <Search size={16} className="absolute left-3 text-gold-muted pointer-events-none" aria-hidden="true" />
       <input
+        id="menu-search-input"
         type="text"
         value={local}
         onChange={handleChange}
