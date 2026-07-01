@@ -24,6 +24,54 @@ const QUICK_PROMPTS = [
   'How do I resolve a manager call?',
 ];
 
+function stripMarkdown(text = '') {
+  return text
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^\s*[-*]\s+/gm, '- ')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/__(.*?)__/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .trim();
+}
+
+function FormattedContent({ content, isUser }) {
+  const blocks = stripMarkdown(content)
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+
+  if (!blocks.length) return null;
+
+  return (
+    <div className="space-y-2">
+      {blocks.map((block, index) => {
+        const lines = block.split('\n').map((line) => line.trim()).filter(Boolean);
+        const isList = lines.length > 1 && lines.every((line) => /^(-|\d+[.)])\s+/.test(line));
+
+        if (isList) {
+          return (
+            <ul key={index} className="space-y-1">
+              {lines.map((line, lineIndex) => (
+                <li key={lineIndex} className="flex gap-1.5">
+                  <span className={isUser ? 'text-pale-light/70' : 'text-gold'}>-</span>
+                  <span>{line.replace(/^(-|\d+[.)])\s+/, '')}</span>
+                </li>
+              ))}
+            </ul>
+          );
+        }
+
+        return (
+          <p key={index} className="whitespace-pre-line">
+            {block}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
 function Message({ msg }) {
   const isUser = msg.role === 'user';
   return (
@@ -38,10 +86,10 @@ function Message({ msg }) {
           'max-w-[85%] px-3 py-2 rounded-2xl text-xs leading-relaxed',
           isUser
             ? 'bg-gold text-pale-light rounded-tr-sm ml-auto'
-            : 'bg-surface border border-gold-muted/30 text-rough rounded-tl-sm',
+            : 'bg-surface border border-gold-muted/30 text-rough rounded-tl-sm shadow-sm',
         ].join(' ')}
       >
-        {msg.content}
+        <FormattedContent content={msg.content} isUser={isUser} />
       </div>
     </div>
   );
@@ -77,7 +125,14 @@ export default function GrokAssistant({ activeTab }) {
     setInput('');
 
     const context = TAB_CONTEXT[activeTab] || 'the admin panel.';
-    const systemPrompt = `You are a helpful AI assistant for Habesha Grand Hotel's admin panel. The admin is currently on ${context} Keep responses concise, practical, and friendly. You can help with menu copywriting, explaining features, generating descriptions, or operational guidance.`;
+    const systemPrompt = [
+      'You are a helpful AI assistant for Habesha Grand Hotel\'s admin panel.',
+      `The admin is currently on ${context}`,
+      'Keep responses concise, practical, and friendly.',
+      'Use short paragraphs and simple bullet lists when useful.',
+      'Do not use markdown headings, tables, code fences, or excessive bold formatting.',
+      'You can help with menu copywriting, explaining features, generating descriptions, and operational guidance.',
+    ].join(' ');
 
     const newMessages = [...messages, { role: 'user', content: userText }];
     setMessages(newMessages);
@@ -95,6 +150,7 @@ export default function GrokAssistant({ activeTab }) {
           task: 'content',
           prompt: `System: ${systemPrompt}\n\n${prompt}\nAssistant:`,
           tone: 'warm',
+          temperature: 0.35,
         },
       });
 
