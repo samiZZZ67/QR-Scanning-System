@@ -1,61 +1,72 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Search, Check, X, AlertTriangle } from 'lucide-react';
-import { api } from '../../../api/client.js';
-import Button from '../../../components/ui/Button.jsx';
-import Modal from '../../../components/ui/Modal.jsx';
-import Input from '../../../components/ui/Input.jsx';
-import Notice from '../../../components/ui/Notice.jsx';
-import LoadingSpinner from '../../../components/ui/LoadingSpinner.jsx';
-import { TableRowsSkeleton } from '../../../components/ui/Skeleton.jsx';
-import OptimizedImage from '../../../components/ui/OptimizedImage.jsx';
-import Card from '../../../components/ui/Card.jsx';
-import { formatMoney } from '../../../utils/formatting.js';
+import React, { useState, useEffect } from "react";
+import {
+  Plus,
+  Edit2,
+  Trash2,
+  Search,
+  Check,
+  X,
+  AlertTriangle,
+} from "lucide-react";
+import { api } from "../../../api/client.js";
+import { uploadImage as uploadImageApi } from "../../../api/assets.js";
+import Button from "../../../components/ui/Button.jsx";
+import Modal from "../../../components/ui/Modal.jsx";
+import Input from "../../../components/ui/Input.jsx";
+import Notice from "../../../components/ui/Notice.jsx";
+import LoadingSpinner from "../../../components/ui/LoadingSpinner.jsx";
+import { TableRowsSkeleton } from "../../../components/ui/Skeleton.jsx";
+import OptimizedImage from "../../../components/ui/OptimizedImage.jsx";
+import Card from "../../../components/ui/Card.jsx";
+import { formatMoney } from "../../../utils/formatting.js";
 
 export default function MenuTab() {
   const [menu, setMenu] = useState({ categories: [], items: [] });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [notice, setNotice] = useState(null);
 
   // Search & Filter
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCatId, setSelectedCatId] = useState('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCatId, setSelectedCatId] = useState("all");
 
   // Modal states
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
 
   // Form state
   const [form, setForm] = useState({
-    nameEn: '',
-    nameAm: '',
-    nameAr: '',
-    descriptionEn: '',
-    descriptionAm: '',
-    descriptionAr: '',
-    price: '',
-    categoryId: '',
-    imageUrl: '',
+    nameEn: "",
+    nameAm: "",
+    nameAr: "",
+    descriptionEn: "",
+    descriptionAm: "",
+    descriptionAr: "",
+    price: "",
+    categoryId: "",
+    imageUrl: "",
     prepMinutes: 0,
     popular: false,
     chefPick: false,
     available: true,
-    sortOrder: 0
+    sortOrder: 0,
   });
 
   const fetchMenu = async () => {
     setLoading(true);
-    setError('');
+    setError("");
     try {
       // Pass includeUnavailable to load everything
-      const data = await api('/menu?includeUnavailable=true');
+      const data = await api("/menu?includeUnavailable=true");
       setMenu({
         categories: data.categories || [],
-        items: data.items || []
+        items: data.items || [],
       });
     } catch (err) {
-      setError(err.message || 'Failed to fetch menu');
+      setError(err.message || "Failed to fetch menu");
     } finally {
       setLoading(false);
     }
@@ -68,20 +79,20 @@ export default function MenuTab() {
   const handleOpenAdd = () => {
     setEditingItem(null);
     setForm({
-      nameEn: '',
-      nameAm: '',
-      nameAr: '',
-      descriptionEn: '',
-      descriptionAm: '',
-      descriptionAr: '',
-      price: '',
-      categoryId: menu.categories[0]?.id || '',
-      imageUrl: '',
+      nameEn: "",
+      nameAm: "",
+      nameAr: "",
+      descriptionEn: "",
+      descriptionAm: "",
+      descriptionAr: "",
+      price: "",
+      categoryId: menu.categories[0]?.id || "",
+      imageUrl: "",
       prepMinutes: 0,
       popular: false,
       chefPick: false,
       available: true,
-      sortOrder: 0
+      sortOrder: 0,
     });
     setShowModal(true);
   };
@@ -89,20 +100,20 @@ export default function MenuTab() {
   const handleOpenEdit = (item) => {
     setEditingItem(item);
     setForm({
-      nameEn: item.name?.en || '',
-      nameAm: item.name?.am || '',
-      nameAr: item.name?.ar || '',
-      descriptionEn: item.description?.en || '',
-      descriptionAm: item.description?.am || '',
-      descriptionAr: item.description?.ar || '',
+      nameEn: item.name?.en || "",
+      nameAm: item.name?.am || "",
+      nameAr: item.name?.ar || "",
+      descriptionEn: item.description?.en || "",
+      descriptionAm: item.description?.am || "",
+      descriptionAr: item.description?.ar || "",
       price: item.price.toString(),
-      categoryId: item.categoryId || '',
-      imageUrl: item.image || '',
+      categoryId: item.categoryId || "",
+      imageUrl: item.image || "",
       prepMinutes: item.prepMinutes || 0,
       popular: !!item.popular,
       chefPick: !!item.chefPick,
       available: item.available !== false,
-      sortOrder: item.sortOrder || 0
+      sortOrder: item.sortOrder || 0,
     });
     setShowModal(true);
   };
@@ -111,45 +122,108 @@ export default function MenuTab() {
     try {
       const nextAvailable = !item.available;
       await api(`/menu-items/${item.id}`, {
-        method: 'PATCH',
-        body: { available: nextAvailable }
+        method: "PATCH",
+        body: { available: nextAvailable },
       });
-      setMenu(prev => ({
+      setMenu((prev) => ({
         ...prev,
-        items: prev.items.map(i => i.id === item.id ? { ...i, available: nextAvailable } : i)
+        items: prev.items.map((i) =>
+          i.id === item.id ? { ...i, available: nextAvailable } : i,
+        ),
       }));
-      setNotice({ type: 'success', message: `Availability updated for "${item.name?.en || item.name}"` });
+      setNotice({
+        type: "success",
+        message: `Availability updated for "${item.name?.en || item.name}"`,
+      });
     } catch (err) {
-      setNotice({ type: 'error', message: err.message || 'Failed to update item' });
+      setNotice({
+        type: "error",
+        message: err.message || "Failed to update item",
+      });
     }
   };
 
   const handleDelete = async (item) => {
-    if (!window.confirm(`Are you sure you want to delete "${item.name?.en || item.name}"?`)) return;
+    if (
+      !window.confirm(
+        `Are you sure you want to delete "${item.name?.en || item.name}"?`,
+      )
+    )
+      return;
     try {
-      await api(`/menu-items/${item.id}`, { method: 'DELETE' });
-      setMenu(prev => ({
+      await api(`/menu-items/${item.id}`, { method: "DELETE" });
+      setMenu((prev) => ({
         ...prev,
-        items: prev.items.filter(i => i.id !== item.id)
+        items: prev.items.filter((i) => i.id !== item.id),
       }));
-      setNotice({ type: 'success', message: `Deleted menu item successfully` });
+      setNotice({ type: "success", message: `Deleted menu item successfully` });
     } catch (err) {
-      setNotice({ type: 'error', message: err.message || 'Failed to delete item' });
+      setNotice({
+        type: "error",
+        message: err.message || "Failed to delete item",
+      });
     }
   };
 
   const handleFormChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === "checkbox" ? checked : value,
     }));
+  };
+
+  const fileInputRef = React.useRef(null);
+
+  const triggerFileSelect = () => {
+    setUploadError("");
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // validate basic image type
+    if (!file.type.startsWith("image/")) {
+      setUploadError("Please select an image file");
+      return;
+    }
+    try {
+      setUploading(true);
+      setUploadError("");
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const resp = await uploadImageApi({ dataUrl, folder: "qr-menu" });
+      setForm((prev) => ({
+        ...prev,
+        imageUrl: resp.url || resp.thumbnail || prev.imageUrl,
+      }));
+      setNotice({ type: "success", message: "Image uploaded successfully." });
+    } catch (err) {
+      setUploadError(err.message || "Failed to upload image");
+      setNotice({
+        type: "error",
+        message: err.message || "Failed to upload image",
+      });
+    } finally {
+      setUploading(false);
+      // clear the file input so same file can be re-selected if needed
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.nameEn || !form.price) {
-      setNotice({ type: 'error', message: 'Name (EN) and Price are required.' });
+      setNotice({
+        type: "error",
+        message: "Name (EN) and Price are required.",
+      });
       return;
     }
 
@@ -159,12 +233,12 @@ export default function MenuTab() {
       name: {
         en: form.nameEn,
         am: form.nameAm || form.nameEn,
-        ar: form.nameAr || form.nameEn
+        ar: form.nameAr || form.nameEn,
       },
       description: {
         en: form.descriptionEn,
         am: form.descriptionAm || form.descriptionEn,
-        ar: form.descriptionAr || form.descriptionEn
+        ar: form.descriptionAr || form.descriptionEn,
       },
       price: Number(form.price),
       image: form.imageUrl,
@@ -172,37 +246,45 @@ export default function MenuTab() {
       popular: form.popular,
       chefPick: form.chefPick,
       available: form.available,
-      sortOrder: Number(form.sortOrder)
+      sortOrder: Number(form.sortOrder),
     };
 
     try {
       if (editingItem) {
         await api(`/menu-items/${editingItem.id}`, {
-          method: 'PATCH',
-          body: payload
+          method: "PATCH",
+          body: payload,
         });
-        setNotice({ type: 'success', message: 'Menu item updated successfully.' });
+        setNotice({
+          type: "success",
+          message: "Menu item updated successfully.",
+        });
       } else {
-        await api('/menu-items', {
-          method: 'POST',
-          body: payload
+        await api("/menu-items", {
+          method: "POST",
+          body: payload,
         });
-        setNotice({ type: 'success', message: 'New menu item created.' });
+        setNotice({ type: "success", message: "New menu item created." });
       }
       setShowModal(false);
       fetchMenu();
     } catch (err) {
-      setNotice({ type: 'error', message: err.message || 'Error saving menu item.' });
+      setNotice({
+        type: "error",
+        message: err.message || "Error saving menu item.",
+      });
     } finally {
       setSubmitting(false);
     }
   };
 
-  const filteredItems = menu.items.filter(item => {
+  const filteredItems = menu.items.filter((item) => {
     const matchesSearch =
-      (item.name?.en || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.name?.am || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCat = selectedCatId === 'all' || Number(item.categoryId) === Number(selectedCatId);
+      (item.name?.en || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.name?.am || "").toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCat =
+      selectedCatId === "all" ||
+      Number(item.categoryId) === Number(selectedCatId);
     return matchesSearch && matchesCat;
   });
 
@@ -210,8 +292,12 @@ export default function MenuTab() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="font-display text-2xl font-bold text-rough">Menu Management</h2>
-          <p className="text-sm text-gold-muted mt-1">Manage food items, descriptions, pricing, and display settings.</p>
+          <h2 className="font-display text-2xl font-bold text-rough">
+            Menu Management
+          </h2>
+          <p className="text-sm text-gold-muted mt-1">
+            Manage food items, descriptions, pricing, and display settings.
+          </p>
         </div>
         <Button variant="primary" onClick={handleOpenAdd}>
           <Plus size={16} className="mr-1.5" />
@@ -220,17 +306,16 @@ export default function MenuTab() {
       </div>
 
       {notice && (
-        <Notice
-          type={notice.type}
-          message={notice.message}
-          className="my-3"
-        />
+        <Notice type={notice.type} message={notice.message} className="my-3" />
       )}
 
       {/* Filter Toolbar */}
       <div className="flex flex-col md:flex-row gap-4 bg-surface p-4 rounded-xl border border-gold-muted/30">
         <div className="relative flex-1">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gold-muted" />
+          <Search
+            size={16}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gold-muted"
+          />
           <input
             type="text"
             placeholder="Search items by name..."
@@ -246,7 +331,7 @@ export default function MenuTab() {
             className="w-full bg-pale-light border border-gold-muted/50 rounded-lg px-3 py-2 text-sm text-rough focus:outline-none focus:ring-1 focus:ring-gold"
           >
             <option value="all">All Categories</option>
-            {menu.categories.map(cat => (
+            {menu.categories.map((cat) => (
               <option key={cat.id} value={cat.id}>
                 {cat.name?.en || cat.name}
               </option>
@@ -263,28 +348,67 @@ export default function MenuTab() {
       ) : filteredItems.length === 0 ? (
         <Card className="flex flex-col items-center justify-center py-16 text-center text-gold-muted">
           <AlertTriangle size={36} className="text-gold-muted/40 mb-2" />
-          <p className="font-display font-medium text-rough text-lg">No Items Found</p>
-          <p className="text-sm">Create a new menu item or adjust filters to begin.</p>
+          <p className="font-display font-medium text-rough text-lg">
+            No Items Found
+          </p>
+          <p className="text-sm">
+            Create a new menu item or adjust filters to begin.
+          </p>
         </Card>
       ) : (
         <div className="overflow-x-auto bg-pale-light rounded-2xl border border-gold-muted/35 shadow-card">
           <table className="min-w-full divide-y divide-gold-muted/20">
             <thead className="bg-surface/50">
               <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gold uppercase tracking-wider">Image</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gold uppercase tracking-wider">Name</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gold uppercase tracking-wider">Category</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gold uppercase tracking-wider">Price</th>
-                <th scope="col" className="px-6 py-3 text-center text-xs font-semibold text-gold uppercase tracking-wider">Status</th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-gold uppercase tracking-wider">Actions</th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-semibold text-gold uppercase tracking-wider"
+                >
+                  Image
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-semibold text-gold uppercase tracking-wider"
+                >
+                  Name
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-semibold text-gold uppercase tracking-wider"
+                >
+                  Category
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-semibold text-gold uppercase tracking-wider"
+                >
+                  Price
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-center text-xs font-semibold text-gold uppercase tracking-wider"
+                >
+                  Status
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-right text-xs font-semibold text-gold uppercase tracking-wider"
+                >
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gold-muted/15">
-              {filteredItems.map(item => {
-                const cat = menu.categories.find(c => c.id === item.categoryId);
-                const catName = cat?.name?.en || 'Unknown';
+              {filteredItems.map((item) => {
+                const cat = menu.categories.find(
+                  (c) => c.id === item.categoryId,
+                );
+                const catName = cat?.name?.en || "Unknown";
                 return (
-                  <tr key={item.id} className="hover:bg-surface/20 transition-colors">
+                  <tr
+                    key={item.id}
+                    className="hover:bg-surface/20 transition-colors"
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="w-12 h-12 rounded-lg overflow-hidden bg-pale border border-gold-muted/30">
                         <OptimizedImage
@@ -295,8 +419,12 @@ export default function MenuTab() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-semibold text-rough">{item.name?.en}</div>
-                      <div className="text-xs text-gold-muted font-sans mt-0.5">{item.name?.am || item.name?.ar}</div>
+                      <div className="text-sm font-semibold text-rough">
+                        {item.name?.en}
+                      </div>
+                      <div className="text-xs text-gold-muted font-sans mt-0.5">
+                        {item.name?.am || item.name?.ar}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-body">
                       {catName}
@@ -308,11 +436,11 @@ export default function MenuTab() {
                       <button
                         onClick={() => handleToggleAvailable(item)}
                         className={[
-                          'inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border cursor-pointer select-none transition-all duration-200',
+                          "inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border cursor-pointer select-none transition-all duration-200",
                           item.available
-                            ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100'
-                            : 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'
-                        ].join(' ')}
+                            ? "bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                            : "bg-red-50 border-red-200 text-red-700 hover:bg-red-100",
+                        ].join(" ")}
                       >
                         {item.available ? (
                           <>
@@ -357,7 +485,7 @@ export default function MenuTab() {
       <Modal
         open={showModal}
         onClose={() => setShowModal(false)}
-        title={editingItem ? 'Edit Menu Item' : 'Add Menu Item'}
+        title={editingItem ? "Edit Menu Item" : "Add Menu Item"}
         size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -390,7 +518,9 @@ export default function MenuTab() {
           {/* Descriptions */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-rough">Description (English)</label>
+              <label className="text-sm font-medium text-rough">
+                Description (English)
+              </label>
               <textarea
                 name="descriptionEn"
                 value={form.descriptionEn}
@@ -400,7 +530,9 @@ export default function MenuTab() {
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-rough">Description (Amharic)</label>
+              <label className="text-sm font-medium text-rough">
+                Description (Amharic)
+              </label>
               <textarea
                 name="descriptionAm"
                 value={form.descriptionAm}
@@ -410,7 +542,9 @@ export default function MenuTab() {
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-rough">Description (Arabic)</label>
+              <label className="text-sm font-medium text-rough">
+                Description (Arabic)
+              </label>
               <textarea
                 name="descriptionAr"
                 value={form.descriptionAr}
@@ -433,7 +567,9 @@ export default function MenuTab() {
               required
             />
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-rough">Category *</label>
+              <label className="text-sm font-medium text-rough">
+                Category *
+              </label>
               <select
                 name="categoryId"
                 value={form.categoryId}
@@ -441,7 +577,7 @@ export default function MenuTab() {
                 required
                 className="w-full bg-surface border border-gold-muted rounded-xl px-3 py-2 text-sm text-rough focus:outline-none focus:ring-1 focus:ring-gold"
               >
-                {menu.categories.map(cat => (
+                {menu.categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
                     {cat.name?.en || cat.name}
                   </option>
@@ -465,14 +601,49 @@ export default function MenuTab() {
             />
           </div>
 
-          {/* Image URL */}
-          <Input
-            label="Image URL"
-            name="imageUrl"
-            value={form.imageUrl}
-            onChange={handleFormChange}
-            placeholder="Paste unsplash or external image URL"
-          />
+          {/* Image URL or Upload */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+            <div>
+              <Input
+                label="Image URL"
+                name="imageUrl"
+                value={form.imageUrl}
+                onChange={handleFormChange}
+                placeholder="Paste unsplash or external image URL"
+              />
+              <div className="mt-2 flex items-center gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={triggerFileSelect}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-surface border border-gold-muted text-sm text-rough hover:bg-pale"
+                  disabled={uploading}
+                >
+                  {uploading ? "Uploading..." : "Upload Image"}
+                </button>
+                {uploadError && (
+                  <div className="text-sm text-red-600">{uploadError}</div>
+                )}
+              </div>
+            </div>
+
+            <div className="md:col-span-2 flex items-center">
+              <div className="w-32 h-20 rounded-lg overflow-hidden bg-pale border border-gold-muted/30">
+                <OptimizedImage
+                  src={form.imageUrl}
+                  alt={form.nameEn || "Preview"}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="ml-4 text-sm text-gold-muted">Preview</div>
+            </div>
+          </div>
 
           {/* Settings checkboxes */}
           <div className="flex flex-wrap gap-6 bg-surface p-4 rounded-xl border border-gold-muted/30">
@@ -513,7 +684,7 @@ export default function MenuTab() {
               Cancel
             </Button>
             <Button type="submit" variant="primary" loading={submitting}>
-              {editingItem ? 'Save Changes' : 'Create Item'}
+              {editingItem ? "Save Changes" : "Create Item"}
             </Button>
           </div>
         </form>
